@@ -1,0 +1,2428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cisco Configuration Hardening</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #E9EDF1;
+    --surface: #F8FAFB;
+    --ink: #16222E;
+    --muted: #566779;
+    --rule: #C3CCD5;
+    --brand: #4E0F0F;       /* University of Kelaniya maroon, from the seal */
+    --brand-ink: #FBF7F4;
+    --brand-soft: #E9D9D6;
+    --action: #5A1414;
+    --action-ink: #FFFFFF;
+    --added: #1F5F8B;
+    --red: #E53935;   --red-text: #B3261E;
+    --yellow: #FDD835; --yellow-text: #735A00;
+    --green: #43A047; --green-text: #2B6E2F;
+    --already: #7C8B99;
+    --code-bg: #EEF2F5;
+    --red-bg: rgba(229, 57, 53, 0.12); --yellow-bg: rgba(253, 216, 53, 0.32);
+    --green-bg: rgba(67, 160, 71, 0.15); --added-bg: rgba(31, 95, 139, 0.09);
+    --focus: #2E7FC0;
+    --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, "Cascadia Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121A22; --surface: #1A242E; --ink: #E3E9EF; --muted: #97A7B7; --rule: #2E3C4A;
+      --action: #9A3030; --action-ink: #FFFFFF; --code-bg: #141D26; --already: #6F8091;
+      --brand: #3A0B0B; --brand-soft: #3B2626; --added: #4E9BD4;
+      --red-text: #F2837E; --yellow-text: #F3D55B; --green-text: #7CCB80; --focus: #7DB9E8;
+      --red-bg: rgba(229, 57, 53, 0.22); --yellow-bg: rgba(253, 216, 53, 0.17);
+      --green-bg: rgba(67, 160, 71, 0.22); --added-bg: rgba(78, 155, 212, 0.15);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 16px/1.55 var(--sans);
+  }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .page { max-width: 1320px; margin: 0 auto; padding: 0 24px 48px; }
+  .band { background: var(--brand); color: var(--brand-ink); }
+  .band-inner { max-width: 1320px; margin: 0 auto; padding: 22px 24px 26px;
+                display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center; }
+  .seal { width: 84px; height: 84px; border-radius: 50%; background: #fff; display: grid; place-items: center;
+          box-shadow: 0 0 0 3px rgba(255,255,255,0.18); flex: none; overflow: hidden; }
+  .seal img { width: 72px; height: 72px; object-fit: contain; }
+  .seal.fct img { width: 84px; height: 84px; border-radius: 50%; }
+  .title-block .inst { margin: 0; font-size: 0.9375rem; opacity: 0.85; }
+  .title-block h1 { margin: 4px 0 6px; font-size: clamp(1.6rem, 3.2vw, 2.25rem); line-height: 1.15; font-weight: 600; letter-spacing: -0.015em; }
+  .title-block .byline { margin: 0; font-size: 0.9375rem; opacity: 0.85; max-width: 70ch; }
+  @media (max-width: 700px) {
+    .band-inner { grid-template-columns: auto auto; justify-content: start; }
+    .title-block { grid-column: 1 / -1; grid-row: 2; }
+    .seal { width: 64px; height: 64px; } .seal img { width: 54px; height: 54px; } .seal.fct img { width: 64px; height: 64px; }
+  }
+  .intro { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 32px; align-items: center; padding: 22px 0 18px; }
+  .intro p { margin: 0; color: var(--muted); max-width: 72ch; }
+  a { color: var(--action); text-underline-offset: 2px; }
+
+  .pipeline { list-style: none; margin: 0 0 28px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+              border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); overflow: hidden; counter-reset: step; }
+  .pipeline li { padding: 12px 16px 13px; border-left: 1px solid var(--rule); position: relative; counter-increment: step; }
+  .pipeline li:first-child { border-left: none; }
+  .pipeline li::before { content: counter(step); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+                         border: 1px solid var(--rule); font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-right: 8px; vertical-align: 1px; }
+  .pipeline b { font-weight: 600; font-size: 0.9375rem; }
+  .pipeline span { display: block; font-size: 0.8125rem; color: var(--muted); margin-top: 2px; }
+  .pipeline li::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: transparent; transition: background 0.3s; }
+  .pipeline li.active::after { background: var(--action); }
+  .pipeline li.active::before { border-color: var(--action); color: var(--action); }
+  .pipeline li.done::before { content: "\2713"; background: var(--green); border-color: var(--green); color: #fff; }
+  .pipeline li.failed::before { content: "!"; background: var(--red); border-color: var(--red); color: #fff; }
+  @media (max-width: 800px) { .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pipeline li:nth-child(3) { border-left: none; } .pipeline li:nth-child(n+3) { border-top: 1px solid var(--rule); } }
+  @media (prefers-reduced-motion: reduce) { .pipeline li::after { transition: none; } }
+
+  /* Network topology diagram */
+  .topo .section-head p { margin: 4px 0 0; color: var(--muted); font-size: 0.875rem; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; padding: 6px 12px; font-size: 0.8125rem; background: var(--surface); }
+  .seg button + button { border-left: 1px solid var(--rule); }
+  .seg button[aria-pressed="true"] { background: var(--action); color: var(--action-ink); }
+  .topo-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--code-bg);
+               background-image: radial-gradient(var(--rule) 1px, transparent 1px); background-size: 18px 18px; }
+  .topo-svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .topo-svg text { font-family: var(--sans); fill: var(--ink); }
+  .topo-svg .mono { font-family: var(--mono); }
+  .topo-svg .t-title { font-size: 13px; font-weight: 600; }
+  .topo-svg .t-sub { font-size: 11.5px; fill: var(--muted); }
+  .topo-svg .t-tag { font-size: 11px; fill: var(--action); font-weight: 500; }
+  .topo-svg .t-lab { font-size: 11.5px; }
+  .topo-svg .t-end { font-size: 10.5px; fill: var(--muted); }
+  .topo-svg .t-devname { font-size: 14px; font-weight: 600; }
+  .topo-svg .t-box { fill: var(--surface); stroke: var(--rule); stroke-width: 1.2; }
+  .topo-svg .t-cloud { fill: var(--surface); stroke: var(--muted); stroke-width: 1.4; }
+  .topo-svg .t-trunk .t-box, .topo-svg .t-network .t-box { stroke-dasharray: 0; }
+  .topo-svg .t-devbox { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+  .topo-svg .t-icon ellipse, .topo-svg .t-icon rect { fill: var(--brand); stroke: none; }
+  .topo-svg .t-icon path { stroke: #fff; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .topo-svg .t-link { fill: none; stroke: var(--muted); stroke-width: 2; }
+  .topo-svg .t-peer { stroke: var(--ink); stroke-width: 2.4; }
+  .topo-svg .t-trunk { stroke-width: 4; }
+  .topo-svg .t-down { stroke-dasharray: 6 5; opacity: 0.7; }
+  .topo-svg .t-down-node .t-box { stroke-dasharray: 5 4; }
+  .topo-svg .t-down-node text { fill: var(--muted); }
+  .topo-svg .t-label rect { fill: var(--code-bg); stroke: var(--rule); stroke-width: 1; }
+  .topo-svg .t-badge.good { fill: var(--green-bg); }
+  .topo-svg .t-badge.bad { fill: var(--red-bg); }
+  .topo-svg .t-badgetext { font-size: 11.5px; font-weight: 500; }
+  .topo-svg .t-badgetext.good { fill: var(--green-text); }
+  .topo-svg .t-badgetext.bad { fill: var(--red-text); }
+  .topo-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 0.8125rem; color: var(--muted); }
+  .topo-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .topo-legend i.dash { width: 22px; height: 0; border-top: 2px dashed var(--muted); border-radius: 0; vertical-align: 3px; }
+  .topo-note { margin: 10px 0 0; font-size: 0.875rem; color: var(--muted); }
+  .topo-svg .t-risk circle { stroke: var(--surface); stroke-width: 2; }
+  .topo-svg .t-risk text { font-size: 12px; font-weight: 700; fill: #fff; }
+  .topo-svg .t-risk.red circle { fill: var(--red); }
+  .topo-svg .t-risk.yellow circle { fill: var(--yellow); }
+  .topo-svg .t-risk.yellow text { fill: #3A2E00; }
+  .topo-svg .t-risk.green circle { fill: var(--green); }
+  .topo-svg .t-risk.none circle { fill: var(--green); }
+
+  /* Attack analysis */
+  .threats .lead { margin: 0 0 6px; max-width: 75ch; }
+  .threats .summary { margin: 0 0 16px; color: var(--muted); font-size: 0.9375rem; max-width: 75ch; }
+  .threats .summary strong { color: var(--ink); }
+  .risk-group + .risk-group { margin-top: 20px; }
+  .risk-group > h3 { display: flex; align-items: center; gap: 8px; font-size: 0.9375rem; font-weight: 600; margin: 0 0 8px; }
+  .risk-group > h3 i { width: 10px; height: 10px; border-radius: 2px; }
+  details.risk { border-left: 3px solid var(--rule); background: var(--code-bg); border-radius: 0 4px 4px 0; margin-bottom: 8px; }
+  details.risk.red { border-left-color: var(--red); } details.risk.yellow { border-left-color: var(--yellow); } details.risk.green { border-left-color: var(--green); }
+  details.risk > summary { cursor: pointer; padding: 10px 14px; list-style: none; display: grid; gap: 2px; }
+  details.risk > summary::-webkit-details-marker { display: none; }
+  .risk-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+  .risk-title strong { font-weight: 600; }
+  .risk-title strong::before { content: "\25B8"; display: inline-block; width: 1em; color: var(--muted); transition: transform 0.2s; }
+  details.risk[open] .risk-title strong::before { transform: rotate(90deg); }
+  .risk-where { font-size: 0.8125rem; color: var(--muted); padding-left: 1em; }
+  .risk-where b { color: var(--ink); font-weight: 500; }
+  .risk-body { padding: 0 14px 12px calc(14px + 1em); display: grid; gap: 6px; max-width: 80ch; }
+  .risk-body p { margin: 0; font-size: 0.9375rem; }
+  .risk-body .lbl { font-weight: 600; }
+  .status { font-size: 0.8125rem; font-weight: 500; white-space: nowrap; }
+  .status.closed { color: var(--green-text); } .status.open { color: var(--red-text); } .status.partial { color: var(--yellow-text); }
+  .threats .caveat { margin: 14px 0 0; font-size: 0.8125rem; color: var(--muted); max-width: 80ch; }
+  @media (prefers-reduced-motion: reduce) { .risk-title strong::before { transition: none; } }
+
+  /* Architecture diagram */
+  .arch { margin-top: 40px; border-top: 1px solid var(--rule); padding-top: 18px; }
+  .arch > summary { cursor: pointer; list-style: none; }
+  .arch > summary::-webkit-details-marker { display: none; }
+  .arch > summary h2::before { content: "\25B8"; display: inline-block; margin-right: 10px; color: var(--muted); transition: transform 0.2s; }
+  .arch[open] > summary h2::before { transform: rotate(90deg); }
+  .arch[open] > summary { margin-bottom: 16px; }
+  .arch-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 32px; align-items: baseline; margin-bottom: 16px; }
+  .arch-head h2 { font-size: 1.375rem; font-weight: 600; margin: 0; }
+  .arch-head p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .diagram { display: grid; grid-template-columns: minmax(0, 1fr) 170px minmax(0, 1.3fr) 150px minmax(0, 1fr); align-items: stretch; }
+  .zone { border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); padding: 14px 14px 16px; display: grid; gap: 8px; align-content: start; }
+  .zone h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+  .zone .zone-sub { margin: -4px 0 4px; font-size: 0.8125rem; color: var(--muted); }
+  .zone.modal { border-top: 3px solid var(--brand); }
+  .node { border: 1px solid var(--rule); border-radius: 4px; padding: 8px 10px; background: var(--code-bg); transition: border-color 0.25s, box-shadow 0.25s; }
+  .node b { display: block; font-weight: 600; font-size: 0.875rem; }
+  .node span { display: block; font-size: 0.8125rem; color: var(--muted); line-height: 1.4; }
+  .node code { font: 0.75rem var(--mono); overflow-wrap: anywhere; }
+  .node.nested { margin-left: 14px; }
+  .node.store { border-style: dashed; }
+  .node.live { border-color: var(--action); box-shadow: 0 0 0 2px var(--action); }
+  .link { display: flex; flex-direction: column; justify-content: center; gap: 18px; padding: 0 10px; }
+  .hop { font-size: 0.8125rem; color: var(--muted); transition: color 0.25s; }
+  .hop b { color: var(--ink); font-weight: 600; }
+  .hop small { display: block; font-size: 0.75rem; line-height: 1.35; }
+  .hop .n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--rule);
+            font-size: 0.6875rem; font-weight: 600; margin-right: 4px; vertical-align: 1px; color: var(--muted); }
+  .hop .arrow { height: 2px; background: var(--rule); margin: 6px 6px 4px; position: relative; transition: background 0.25s; }
+  .hop .arrow::after { content: ""; position: absolute; top: -4px; right: -6px; border-left: 8px solid var(--rule);
+                       border-top: 5px solid transparent; border-bottom: 5px solid transparent; transition: border-color 0.25s; }
+  .hop.rev .arrow::after { right: auto; left: -6px; border-left: none; border-right: 8px solid var(--rule); }
+  .hop.live { color: var(--ink); }
+  .hop.live .arrow { background: var(--action); }
+  .hop.live .arrow::after { border-left-color: var(--action); }
+  .hop.rev.live .arrow::after { border-left-color: transparent; border-right-color: var(--action); }
+  .hop.live .n { border-color: var(--action); color: var(--action); }
+  .hop .dir { display: none; }
+  @media (max-width: 1050px) {
+    .diagram { grid-template-columns: minmax(0, 1fr); }
+    .link { padding: 12px 8px; gap: 10px; flex-direction: row; flex-wrap: wrap; justify-content: center; }
+    .hop { flex: 1 1 150px; }
+    .hop .arrow { display: none; }
+    .hop .dir { display: inline; font-weight: 600; color: var(--ink); margin-right: 4px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .node, .hop, .hop .arrow, .hop .arrow::after { transition: none; } }
+  .arch-notes { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; margin-top: 22px; }
+  @media (max-width: 900px) { .arch-notes { grid-template-columns: minmax(0, 1fr); } }
+  .steps { margin: 0; padding-left: 1.4em; }
+  .steps li { margin-bottom: 8px; max-width: 75ch; }
+  .steps li::marker { font-weight: 600; color: var(--muted); }
+  .steps code, .facts code { font: 0.8125rem var(--mono); }
+  .facts { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; font-size: 0.9375rem; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; overflow-wrap: anywhere; }
+  .arch-notes h3 { font-size: 1rem; font-weight: 600; margin: 0 0 10px; }
+
+  footer.foot { max-width: 1320px; margin: 0 auto; padding: 22px 24px 40px; border-top: 1px solid var(--rule);
+                font-size: 0.8125rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 32px; justify-content: space-between; }
+  footer.foot p { margin: 0; max-width: 80ch; }
+
+  .preview { margin-top: 18px; font: 0.8125rem/1.55 var(--mono); border: 1px solid var(--rule); border-radius: 4px;
+             background: var(--code-bg); padding: 10px 0; max-width: 460px; }
+  .preview .ln { padding-right: 16px; }
+  .preview-cap { font-size: 0.8125rem; color: var(--muted); margin: 8px 0 0; }
+  .conn { display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--muted); white-space: nowrap; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--already); flex: none; }
+  .dot.ready { background: var(--green); }
+  .dot.busy { background: var(--yellow); }
+  .dot.fail { background: var(--red); }
+
+  .layout { display: grid; grid-template-columns: minmax(320px, 440px) minmax(0, 1fr); gap: 32px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .input-col, .results, .panel { min-width: 0; }
+
+  .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; }
+  .input-col { position: sticky; top: 16px; display: grid; gap: 16px; }
+  @media (max-width: 900px) { .input-col { position: static; } }
+
+  label.field { display: block; font-weight: 500; font-size: 0.9375rem; margin-bottom: 6px; }
+  .hint { font-size: 0.8125rem; color: var(--muted); margin: 6px 0 0; }
+  textarea, input[type=text], input[type=password], input[type=url], select {
+    width: 100%; font: inherit; color: var(--ink); background: var(--code-bg);
+    border: 1px solid var(--rule); border-radius: 4px; padding: 8px 10px;
+  }
+  textarea { font-family: var(--mono); font-size: 0.8125rem; line-height: 1.5; min-height: 300px; resize: vertical; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button {
+    font: 500 0.9375rem var(--sans); border-radius: 4px; padding: 9px 16px; cursor: pointer;
+    border: 1px solid var(--rule); background: var(--surface); color: var(--ink);
+  }
+  button.primary { background: var(--action); color: var(--action-ink); border-color: var(--action); }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  button.small { padding: 5px 10px; font-size: 0.8125rem; }
+
+  details.settings > summary { cursor: pointer; font-weight: 500; }
+  details.settings[open] > summary { margin-bottom: 14px; }
+  .settings .grp { margin-bottom: 14px; }
+  .radio { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0; font-size: 0.9375rem; }
+  .radio input { margin-top: 5px; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 0.875rem; margin-top: 8px; }
+
+  .status { font-size: 0.9375rem; min-height: 1.5em; }
+  .status.error { color: var(--red-text); }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--rule); border-top-color: var(--action);
+             border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -1px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+
+  /* Results */
+  .results { display: grid; gap: 28px; min-width: 0; }
+  .empty { color: var(--muted); padding: 48px 8px; max-width: 60ch; }
+  .empty h2 { color: var(--ink); font-size: 1.25rem; margin: 0 0 8px; font-weight: 600; }
+  section h2 { font-size: 1.125rem; font-weight: 600; margin: 0 0 12px; }
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .section-head h2 { margin: 0; }
+
+  /* Score: the one bold element */
+  .score-numbers { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .score-big { font-size: clamp(2.5rem, 6vw, 3.75rem); font-weight: 600; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .score-big .from { color: var(--muted); font-weight: 400; }
+  .score-big .arrow { color: var(--muted); font-weight: 400; margin: 0 0.15em; }
+  .score-delta { font-size: 1.125rem; font-weight: 500; color: var(--green-text); }
+  .bar { display: flex; height: 28px; border-radius: 4px; overflow: hidden; border: 1px solid var(--rule); background: var(--code-bg); }
+  .bar > span { height: 100%; }
+  .seg-already { background: var(--already); }
+  .seg-red { background: var(--red); }
+  .seg-yellow { background: var(--yellow); }
+  .seg-green { background: var(--green); }
+  .seg-allow { background: repeating-linear-gradient(135deg, transparent 0 5px, var(--rule) 5px 7px); }
+  .seg-gap { background: transparent; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 0.8125rem; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  table.fixes { width: 100%; border-collapse: collapse; margin-top: 20px; font-variant-numeric: tabular-nums; }
+  table.fixes th, table.fixes td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: right; }
+  table.fixes th:first-child, table.fixes td:first-child { text-align: left; }
+  table.fixes thead th { font-weight: 500; font-size: 0.8125rem; color: var(--muted); }
+  table.fixes tr.total td { font-weight: 600; border-bottom: none; }
+  .lvl { display: inline-flex; align-items: center; gap: 8px; }
+  .lvl i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .formula { font-size: 0.8125rem; color: var(--muted); margin: 10px 0 0; }
+
+  pre.config { margin: 0; font: 0.8125rem/1.55 var(--mono); background: var(--code-bg); border: 1px solid var(--rule);
+               border-radius: 4px; padding: 14px 16px; overflow-x: auto; white-space: pre; max-height: 640px; }
+  .meta { font-size: 0.8125rem; color: var(--muted); margin-top: 8px; }
+  pre.config.annotated { padding: 12px 0; }
+  .lines { display: inline-block; min-width: 100%; }
+  .ln { display: block; min-height: 1.55em; padding: 0 16px 0 13px; border-left: 3px solid transparent; }
+  .ln.k-red { background: var(--red-bg); border-left-color: var(--red); }
+  .ln.k-yellow { background: var(--yellow-bg); border-left-color: var(--yellow); }
+  .ln.k-green { background: var(--green-bg); border-left-color: var(--green); }
+  .ln.k-added { background: var(--added-bg); border-left-color: var(--added); }
+  .ln.k-restored { border-left: 3px dashed var(--muted); font-style: italic; }
+  .line-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8125rem; color: var(--muted); margin: 0 0 10px; }
+  .line-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .line-legend i { width: 18px; height: 12px; border-left: 3px solid transparent; border-radius: 1px; flex: none; }
+  .line-legend i.k-red { background: var(--red-bg); border-left-color: var(--red); }
+  .line-legend i.k-yellow { background: var(--yellow-bg); border-left-color: var(--yellow); }
+  .line-legend i.k-green { background: var(--green-bg); border-left-color: var(--green); }
+  .line-legend i.k-added { background: var(--added-bg); border-left-color: var(--added); }
+  .line-legend i.k-restored { border: 1px solid var(--rule); border-left: 3px dashed var(--muted); background: var(--code-bg); }
+  .line-legend i.k-plain { border: 1px solid var(--rule); border-left-width: 3px; background: var(--code-bg); }
+
+  .report h3 { font-size: 0.9375rem; font-weight: 600; margin: 18px 0 8px; }
+  .report h3:first-child { margin-top: 0; }
+  .report ul { list-style: none; margin: 0; padding: 0; }
+  .report li { padding: 7px 0; border-bottom: 1px solid var(--rule); }
+  .report li:last-child { border-bottom: none; }
+  .report code { font: 0.8125rem var(--mono); }
+  .report .why { display: block; color: var(--muted); font-size: 0.875rem; }
+  .warn { color: var(--yellow-text); font-weight: 500; }
+
+  .fix-group + .fix-group { margin-top: 22px; }
+  .fix-group h3 { display: flex; align-items: center; gap: 8px; font-size: 0.9375rem; font-weight: 600; margin: 0 0 6px; }
+  .fix-group h3 i { width: 10px; height: 10px; border-radius: 2px; }
+  .fix { padding: 10px 0 10px 14px; border-left: 3px solid var(--rule); margin-left: 3px; }
+  .fix.red { border-left-color: var(--red); }
+  .fix.yellow { border-left-color: var(--yellow); }
+  .fix.green { border-left-color: var(--green); }
+  .fix strong { font-weight: 600; }
+  .fix code { display: block; font: 0.8125rem var(--mono); color: var(--muted); margin: 2px 0 4px; overflow-wrap: anywhere; }
+  .fix p { margin: 0; font-size: 0.9375rem; max-width: 75ch; }
+  .txt-red { color: var(--red-text); } .txt-yellow { color: var(--yellow-text); } .txt-green { color: var(--green-text); }
+
+  details.raw summary { cursor: pointer; color: var(--muted); font-size: 0.9375rem; }
+  details.raw pre { margin-top: 10px; white-space: pre-wrap; }
+  .hidden { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header class="band">
+  <div class="band-inner">
+    <div class="seal"><img src="data:image/png;base64,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" alt="University of Kelaniya seal"></div>
+    <div class="title-block">
+      <p class="inst">Faculty of Computing and Technology, University of Kelaniya</p>
+      <h1>Cisco configuration hardening</h1>
+      <!-- Edit the line below to change the author / project line shown in the header -->
+      <p class="byline">Final-year research project by Ushitha Samudaya</p>
+    </div>
+    <div class="seal fct"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAABG5ElEQVR42u2dd3xV9fnH32fclb0gAwgzYa+AioIVEHECrmpRW6DVXx0/q7joz7oHiqtYq7XWaqtotWqttaAoMqwgyoZAQHYWhEySe29u7j3nfH9/JOf0XjJEICEh53m9QsK5557x/T6f7zO/zyMJIQQ2nXAyh/XI37IsI0lSxDHz/+YxIQSyLEdczzCMRsdsan2SbICcOECEM/rx0tECQgiBYRj/nVBJsoFkA6T9g6GyspLS0lJ8Ph9CCPbs2UNxcTGTJk1i0KBBAHz55ZfExsYycuRIdF1HURS2bdvGl19+yY033mjdR9d1vvrqK84880ycTqctVdqQVHsIjmFVOQIcwWCQw4cP06VLFwB0XWfBggUcOHCAqqoqSktLue666+jTpw8JCQkWY2/cuJGYmJgIgBw8eJC77rqL8ePHM2DAAOv6r732GqeddpoFEFMNO3ToEP/+97/xer04HA7OOOMMhg0bhqIoJ1SidVayl59mJISu6+i6zpECNhgMUlVVFWFDVFZW8sQTT6BpmmVn3HLLLcydO5dnnnmGQYMGMW3aNC655BIyMjKs7yUmJqIoSsT1a2trueKKK3j55ZfRNM16lri4OOtcwzCQJIlVq1Zxxx134HA4GD58OD169ODDDz9ky5YtSJIUoXrZZEuQE6r7hzNuuDFdUFDAggULePDBB63jqampBINBiouLyczMtEBiGAaKolBcXExlZSVxcXERKpEkSYRCoYj7V1dXc9FFF7F3715ee+01/ud//gev14vT6URVVUvtKiws5KWXXuKZZ54hLS3N+v4ll1wSAdSjdSbY0saWIEfFLLIsU1BQwD//+U/efPNNDhw4gCRJFiN1796dyspKqqqqLBAA9OrVi7179zbyWLlcLlwuF3V1dY2khdPptJjZpLq6Ourq6rjtttt47733OHz4MIZh4HQ6URQFXdeRJIl//vOfXHzxxaSlpREMBq3v67qOqqpH/b6SJNngsAHy/d4f8+/XXnuNefPmEQqFkGWZG2+8kV27dlnGssvlIjY2luLi4ggw9OjRgx07dkQcM3/HxsZSVlbWePBlGV3XI44FAgEkScLj8XD11Vczf/58VFW1ns9k5n379jF48GCEEDgcDoqKiiguLkZRFMtV/H2SUpIktmzZ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0YM///nP/Oc//2H+/PmWxDiSL9rCfm2THYXmyz3++OPcc889LF26lNzcXG699VY8Ho+lO9oxElvFMtUqUyrcdtttuN1u5s2bFxEqaDNbqC1WBlmWKS0tJT09nY8//pj8/HzuuecePB6PtXKYvysrKyksLGxkmNl06toc77//PosWLbLyqsLVp+effx6Xy8XNN9+MpmmNKm52aICEv0xubi6ff/45sbGx3HjjjRH6owmiQ4cO8fOf/5zi4mLrcxskp6ZKZc6rYRiMGjWKV155hRUrVlh5VeEhg0ceeYT+/ftzxx13UFtb27Y8IVqZdF0XQgjxxRdfiI8++ijimBBCGIYhhBCiurpaXHHFFeLjjz9udI5Npy4Fg0EhhBD79u0TF198sdi8ebMQQghN0xrxyJo1a4Tf72/T56OtBySc8c2/vV6vmD59unj//fcjBscwDOH1em0uOsXo0KFDori4uNHxrVu3ismTJ4sdO3Y0AsnJWjCVhx566KG2FKum8WX+rWkaN910E+eddx7Tp09H0zQr0Lht2zaWL1/OsGHDTlh+v00nj0z7YtWqVVx++eVs3bqV1atXU1FRgcPhYMCAAYwYMYLHH3+cc845x2qZZnqrTgYPnJS6WOYtdV3npptu4vTTT+eGG26wIu+mTfLSSy8xYsSIiNRmuwDEqeGpevrpp1m3bh0zZszgiy++oKioiFAoxIgRI6ioqGDLli28++67JCYmtrnnqs2M9O/zbt19990MHjyYG264IUJySJKE1+ulpKSEUaNGRT6wDY4OF984cv7Muc/KyrIqkfz1r3/lySefJCsri9TUVILBIG+//bYlOU4WnbTKirqus379ek477bSI+IcpRT777DOKioqYNWsWwWAQp9OJrut88cUXnHnmmcTGxtpxkw4kNcKDeiZwFEVh1qxZDB06lDvuuKMRuGpra4mKijqpz37SlmNFURqBI1yUrl+/nrFjxwLgdDr5+uuvuffee6msrMTtdjfpT7epfcU31q1bx4oVK6yiHeZxM7fKMAz++Mc/8u233/Lmm28CEAqFrA5jJxsccJJbsB1pT5iGe3FxMW63m+zsbPLz83n33XcBuPXWW+nevbt1rgkmM7B0MnVVmxrbmKWlpfz+979n7969XHnllcTExFgagjlPTqeT1157jZkzZxIfH8/UqVOtzIv2MJftqni1CZiF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" alt="Faculty of Computing and Technology logo"></div>
+  </div>
+</header>
+<div class="page">
+  <div class="intro">
+    <p>AI-generated network configurations often work but leave devices open: Telnet, plaintext passwords,
+       unused services. This tool asks a fine-tuned model to harden a Cisco configuration, checks its answer
+       line by line, and scores the result with the method from the thesis.
+       <a href="#architecture" id="archLink">See how this tool connects to the model</a>.</p>
+    <div class="conn" aria-live="polite"><span class="dot" id="connDot"></span><span id="connText">Not connected yet</span></div>
+  </div>
+
+  <ol class="pipeline" id="pipeline" aria-label="What happens when you run it">
+    <li><b>Start the model</b><span>Wakes the GPU on Modal if it has been idle</span></li>
+    <li><b>Harden the configuration</b><span>Fine-tuned Qwen2.5-7B writes a corrected config</span></li>
+    <li><b>Validate every line</b><span>Removes invented or wrong commands, protects your input</span></li>
+    <li><b>Score the result</b><span>Red 3, Yellow 2, Green 1, plus a 10-point allowance</span></li>
+  </ol>
+
+  <div class="layout">
+    <div class="input-col">
+      <div class="panel">
+        <label class="field" for="config">Insecure configuration</label>
+        <textarea id="config" spellcheck="false" autocomplete="off" placeholder="hostname Router1&#10;interface GigabitEthernet0/0&#10;ip address 192.168.1.1 255.255.255.0&#10;no shutdown"></textarea>
+        <p class="hint" id="detected">Device type and category are detected from the configuration.</p>
+        <div class="row" style="margin-top:14px">
+          <button class="primary" id="runBtn">Harden configuration</button>
+          <label class="sr-only" for="example">Load an example</label>
+          <select id="example" style="width:auto;flex:1;min-width:180px">
+            <option value="">Load an example…</option>
+            <option value="office">Office router (from the training data)</option>
+            <option value="branch">Branch router with Telnet (not in training data)</option>
+            <option value="switch">Access switch (not in training data)</option>
+          </select>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </div>
+
+      <details class="panel settings" id="settings">
+        <summary>Connection settings</summary>
+        <div class="grp">
+          <label class="field" for="endpoint">Modal endpoint URL</label>
+          <input type="url" id="endpoint" spellcheck="false">
+        </div>
+        <div class="grp">
+          <label class="field" for="apikey">API key</label>
+          <div class="row" style="flex-wrap:nowrap">
+            <input type="password" id="apikey" spellcheck="false" autocomplete="off" placeholder="The API_KEY value from your Modal secret">
+            <button class="small" id="showKey" type="button" aria-pressed="false">Show</button>
+          </div>
+          <label class="check"><input type="checkbox" id="rememberKey"> Remember the key on this computer</label>
+          <p class="hint">The key is only sent to your Modal endpoint. It is never written into this file.</p>
+        </div>
+        <div class="grp">
+          <span class="field" style="display:block;font-weight:500;margin-bottom:6px">Model</span>
+          <label class="radio"><input type="radio" name="model" value="network-corrector" checked> <span>Fine-tuned model (your LoRA adapter)</span></label>
+          <label class="radio"><input type="radio" name="model" value="Qwen/Qwen2.5-7B-Instruct"> <span>Base Qwen2.5-7B, without fine-tuning, for comparison</span></label>
+        </div>
+        <div class="grp" style="margin-bottom:0">
+          <label class="field" for="category">Category</label>
+          <select id="category">
+            <option value="">Detect automatically</option>
+            <option>Basic Router Configurations</option>
+            <option>Basic Switch Configurations</option>
+            <option>VLAN Configurations</option>
+            <option>Trunking and Inter-VLAN Routing</option>
+            <option>ACL -- Standard &amp; Extended</option>
+            <option>NAT -- Static/Dynamic/PAT</option>
+            <option>OSPF Routing</option>
+            <option>EIGRP / Static Routing</option>
+            <option>SSH / Telnet and Remote Access</option>
+            <option>DHCP Configuration</option>
+          </select>
+        </div>
+      </details>
+    </div>
+
+    <main class="results" id="results" aria-live="polite">
+      <section class="panel topo hidden" id="topo" aria-labelledby="topoTitle">
+        <div class="section-head">
+          <div>
+            <h2 id="topoTitle">Network diagram</h2>
+            <p id="topoCaption">Drawn automatically from your configuration as you type.</p>
+          </div>
+          <div class="seg hidden" id="topoToggle" role="group" aria-label="Which configuration to draw">
+            <button type="button" data-view="input" aria-pressed="false">Your input</button>
+            <button type="button" data-view="final" aria-pressed="true">Corrected configuration</button>
+          </div>
+        </div>
+        <div class="topo-wrap" id="topoWrap"></div>
+        <div class="topo-legend">
+          <span><i style="background:var(--green-bg);border-left:3px solid var(--green)"></i>Secure setting</span>
+          <span><i style="background:var(--red-bg);border-left:3px solid var(--red)"></i>Insecure setting</span>
+          <span><i class="dash"></i>Interface shut down</span>
+          <span>Thick line: link between two devices</span>
+          <span>Number on a device: attack risks found (details below the diagram)</span>
+        </div>
+        <p class="topo-note hidden" id="topoNote"></p>
+      </section>
+      <section class="panel threats hidden" id="threats" aria-labelledby="threatsTitle">
+        <h2 id="threatsTitle">How this configuration could be attacked</h2>
+        <p class="lead">If the configuration is used exactly as entered, these are the ways an attacker could get in, spy on traffic or disrupt the network.
+           Open an item to see how the attack works, what the attacker gains, and the fix.</p>
+        <p class="summary" id="threatSummary"></p>
+        <div id="threatList"></div>
+        <p class="caveat">Based on the configuration text only. It can't see firewalls, physical security or anything else around the device,
+           so treat it as a list of weaknesses to fix, not proof that an attack would succeed.</p>
+      </section>
+      <div class="empty" id="empty">
+        <h2>Results will appear here</h2>
+        <p>Paste a configuration or load an example, then select Harden configuration. The first request
+           after the endpoint has been idle for 15 minutes wakes the model on Modal, which can take a few minutes.</p>
+        <div class="preview" aria-hidden="true">
+          <span class="ln k-plain">hostname BranchR1</span>
+          <span class="ln k-red">enable secret ********</span>
+          <span class="ln k-yellow">service password-encryption</span>
+          <span class="ln k-red">transport input ssh</span>
+          <span class="ln k-green">no ip bootp server</span>
+        </div>
+        <p class="preview-cap">The corrected configuration comes back highlighted by how critical each fix is.</p>
+      </div>
+    </main>
+  </div>
+
+  <details class="arch" id="architecture">
+    <summary class="arch-head">
+      <h2 id="archTitle">How this tool connects to the model</h2>
+      <p>The model runs on a rented GPU in Modal's cloud. This page talks to it directly over HTTPS; the
+         validation and scoring happen here in your browser. The highlighted parts show what is working during a run.</p>
+    </summary>
+
+    <div class="diagram">
+      <div class="zone">
+        <h3>Your computer</h3>
+        <p class="zone-sub">A web browser running this file</p>
+        <div class="node" id="n-page"><b>This page</b><span>Takes your configuration and builds the prompt, with the detected category</span></div>
+        <div class="node" id="n-validator"><b>Validator</b><span>Checks every line of the model's answer against the verified command set and your input</span></div>
+        <div class="node" id="n-score"><b>Scoring</b><span>Red 3, Yellow 2, Green 1, plus a 10-point allowance</span></div>
+      </div>
+
+      <div class="link" aria-hidden="true">
+        <div class="hop" id="h-health"><span class="dir">↓</span><span class="n">1</span><b>Health check</b><div class="arrow"></div><small>GET /health wakes the GPU if it is asleep</small></div>
+        <div class="hop" id="h-request"><span class="dir">↓</span><span class="n">2</span><b>Request</b><div class="arrow"></div><small>HTTPS POST /v1/chat/completions with the API key</small></div>
+        <div class="hop rev" id="h-answer"><span class="dir">↑</span><span class="n">3</span><b>Answer</b><div class="arrow"></div><small>Markdown: fixes, corrected config, score</small></div>
+      </div>
+
+      <div class="zone modal">
+        <h3>Modal cloud</h3>
+        <p class="zone-sub">App <code>ushitha-network-corrector</code></p>
+        <div class="node" id="n-endpoint"><b>Web endpoint</b><span>Public HTTPS address that forwards requests to the container</span></div>
+        <div class="node nested" id="n-vllm"><b>vLLM 0.10.1.1 server</b><span>OpenAI-compatible API; checks the API key; up to 32 requests at once</span></div>
+        <div class="node nested" id="n-gpu"><b>NVIDIA L40S GPU, 48 GB</b><span>Qwen2.5-7B-Instruct in bfloat16 with the LoRA adapter <code>network-corrector</code> applied</span></div>
+        <div class="node nested store" id="n-volume"><b>Volume <code>huggingface-cache</code></b><span>Keeps the downloaded weights between starts</span></div>
+      </div>
+
+      <div class="link" aria-hidden="true">
+        <div class="hop rev" id="h-weights"><span class="dir">↑</span><b>Model weights</b><div class="arrow"></div><small>Downloaded on the first start only, about 15 GB</small></div>
+      </div>
+
+      <div class="zone">
+        <h3>Hugging Face Hub</h3>
+        <p class="zone-sub">Where the model files are stored</p>
+        <div class="node"><b>Base model</b><span><code>Qwen/Qwen2.5-7B-Instruct</code></span></div>
+        <div class="node"><b>Trained QLoRA adapter</b><span><code>Ushitha/ushitha-coder-network-corrector</code></span></div>
+      </div>
+    </div>
+
+    <div class="arch-notes">
+      <div>
+        <h3>What happens in one run</h3>
+        <ol class="steps">
+          <li>The page calls <code>/health</code>. If nobody has used the model for 15 minutes, Modal has shut the
+              container down to save cost, so it starts a new one on an L40S GPU and vLLM loads the model. This cold start
+              takes a few minutes; later requests are answered straight away.</li>
+          <li>The page sends your configuration with the same system prompt and format the model was trained on.
+              Settings: temperature 0 (always the model's most likely answer), up to 2,500 output tokens, repetition penalty 1.15.</li>
+          <li>vLLM runs the base model with your adapter applied and returns the answer as Markdown.</li>
+          <li>Back in the browser, the validator cleans and completes the answer, the scoring rates it, and the corrected
+              configuration is highlighted. Your configuration is sent only to your Modal endpoint.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>This session</h3>
+        <dl class="facts">
+          <dt>Endpoint</dt><dd id="f-endpoint">Not set</dd>
+          <dt>Model</dt><dd id="f-model">Fine-tuned (<code>network-corrector</code>)</dd>
+          <dt>API key</dt><dd id="f-key">Not entered</dd>
+          <dt>Start-up wait</dt><dd id="f-ready">No run yet</dd>
+          <dt>Generation</dt><dd id="f-gen">No run yet</dd>
+        </dl>
+      </div>
+    </div>
+  </details>
+</div>
+<footer class="foot">
+  <p>Model: Qwen2.5-7B-Instruct with a QLoRA adapter, trained on 246 insecure and corrected Cisco configurations
+     across 10 categories, served with vLLM on Modal.</p>
+  <p>Faculty of Computing and Technology, University of Kelaniya</p>
+</footer>
+
+<script>
+const T = {"SCORING_RULES": [["Encrypted privileged-exec password (enable secret)", "Red", "^enable\\s+secret\\s+\\S+", "Protects privileged mode with a one-way hashed password instead of none or a reversible one."], ["Local user account with encrypted secret", "Red", "^username\\s+\\S+.*\\bsecret\\b", "Creates a named admin account with a hashed secret, giving per-user accountability."], ["RSA key pair generated for SSH", "Red", "^crypto\\s+key\\s+generate\\s+rsa", "RSA keys are required before the device can accept encrypted SSH connections."], ["SSH version 2 enforced", "Red", "^ip\\s+ssh\\s+version\\s+2", "Disables SSHv1, which has known cryptographic weaknesses."], ["Remote management restricted to SSH only", "Red", "^transport\\s+input\\s+ssh\\s*$", "Removes Telnet so credentials are never sent in cleartext."], ["Local authentication required on management lines", "Red", "^login\\s+local\\b", "Every console/VTY session must authenticate against the local user database."], ["Port security enabled on access ports", "Red", "^switchport\\s+port-security\\s*$", "Limits learned MAC addresses so rogue devices and CAM flooding are blocked."], ["OSPF area authentication enabled", "Red", "^area\\s+\\S+\\s+authentication", "Prevents rogue routers from injecting false OSPF routes."], ["EIGRP authentication enabled", "Red", "^ip\\s+authentication\\s+mode\\s+eigrp", "Prevents rogue routers from forming EIGRP neighbourships and injecting routes."], ["Default SNMP community string replaced", "Red", "^snmp-server\\s+community\\s+(?!public\\b|private\\b)\\S+", "Replaces the well-known default community string that lets anyone read (or change) device data."], ["HTTP/HTTPS management server disabled", "Yellow", "^no\\s+ip\\s+http\\s+server", "Removes the web management interface, a common attack target."], ["IP source routing disabled", "Yellow", "^no\\s+ip\\s+source-route", "Stops attackers from choosing the path their packets take through the network."], ["Password encryption service enabled", "Yellow", "^service\\s+password-encryption", "Hides plaintext passwords in the configuration file."], ["CDP disabled", "Yellow", "^no\\s+cdp\\s+run", "Stops the device advertising its model, IOS version and addresses to neighbours."], ["Idle session timeout on management lines", "Yellow", "^exec-timeout\\s+(?!0\\s+0)\\d+", "Automatically logs out unattended sessions."], ["SSH negotiation timeout", "Yellow", "^ip\\s+ssh\\s+time-out", "Limits how long an unauthenticated SSH session can stay open."], ["Login warning banner", "Yellow", "^banner\\s+motd", "Provides legal notice that unauthorized access is prohibited."], ["Explicit deny with logging on ACL", "Yellow", "^(access-list\\s+\\S+\\s+)?deny\\s.*\\blog(-input)?\\s*$", "Explicitly blocks and logs traffic from unauthorized sources."], ["VTY access restricted by ACL", "Yellow", "^access-class\\s+\\S+\\s+in", "Only approved management subnets can reach remote login."], ["Trunk negotiation (DTP) disabled", "Yellow", "^switchport\\s+nonegotiate", "Prevents VLAN-hopping attacks via DTP switch spoofing."], ["BPDU Guard enabled", "Yellow", "^spanning-tree\\s+bpduguard\\s+enable", "Shuts a port that receives unexpected BPDUs, blocking rogue switches."], ["Routing updates suppressed by default", "Yellow", "^passive-interface\\s+default", "Routing protocol hellos are only sent where neighbours are expected."], ["Trunk native VLAN changed", "Yellow", "^switchport\\s+trunk\\s+native\\s+vlan", "Moves the native VLAN off VLAN 1 to reduce VLAN-hopping risk."], ["ICMP redirects disabled", "Yellow", "^no\\s+ip\\s+redirects", "Stops the device being used to redirect traffic to an attacker."], ["Trunk allowed VLANs restricted", "Yellow", "^switchport\\s+trunk\\s+allowed\\s+vlan", "Only the required VLANs cross the trunk."], ["TCP/UDP small servers disabled", "Green", "^no\\s+service\\s+(tcp|udp)-small-servers", "Removes legacy echo/chargen/discard services."], ["BOOTP server disabled", "Green", "^no\\s+ip\\s+bootp\\s+server", "Removes an unused legacy listener."], ["Accurate log timestamps", "Green", "^service\\s+timestamps\\s+log", "Makes troubleshooting and event correlation easier."], ["Synchronous console logging", "Green", "^logging\\s+synchronous", "Stops log messages interrupting commands being typed."], ["DNS lookup on typos disabled", "Green", "^no\\s+ip\\s+domain[-\\s]lookup", "Stops the CLI hanging when a command is mistyped."], ["Domain name configured", "Green", "^ip\\s+domain[-\\s]name\\s+\\S+", "Required together with the hostname to generate RSA keys."], ["PAD service disabled", "Green", "^no\\s+service\\s+pad", "Removes the unused X.25 PAD service."], ["Trunk encapsulation set explicitly", "Green", "^switchport\\s+trunk\\s+encapsulation", "Avoids trunk negotiation ambiguity."]], "VERIFIED_SIGNATURES": ["aaa accounting", "aaa authentication", "aaa authorization", "aaa new-model", "access-class", "access-list N deny", "access-list N permit", "access-list N remark", "archive", "area", "auto-summary", "bandwidth", "banner", "cdp enable", "channel-group", "clock", "clock rate", "crypto key generate", "default-information", "default-router", "deny", "description", "distance", "dns-server", "domain-name", "duplex", "eigrp", "enable", "encapsulation", "end", "errdisable", "exec", "exec-timeout", "hostname", "interface", "ip access-group", "ip access-list", "ip address", "ip arp", "ip authentication", "ip cef", "ip default-gateway", "ip dhcp", "ip dhcp snooping", "ip domain", "ip domain-name", "ip helper-address", "ip http", "ip mtu", "ip name-server", "ip nat", "ip nat inside", "ip nat outside", "ip ospf", "ip route", "ip routing", "ip scp", "ip ssh", "ip summary-address", "ip tcp", "ip verify", "ipv6 address", "ipv6 unicast-routing", "keepalive", "key", "key-string", "lease", "line aux", "line con", "line console", "line vty", "lldp run", "log-adjacency-changes", "logging buffered", "logging console", "logging host", "logging on", "logging source-interface", "logging synchronous", "logging trap", "login", "login block-for", "login delay", "login local", "login on-failure", "login on-success", "login quiet-mode", "mac", "maximum-paths", "mdix", "name", "network", "no auto-summary", "no cdp enable", "no cdp run", "no ip address", "no ip bootp", "no ip dhcp", "no ip directed-broadcast", "no ip domain lookup", "no ip domain-lookup", "no ip finger", "no ip gratuitous-arps", "no ip http", "no ip mroute-cache", "no ip proxy arp", "no ip proxy-arp", "no ip redirects", "no ip route-cache", "no ip source-route", "no ip unreachables", "no keepalive", "no lldp run", "no logging console", "no mop enabled", "no passive-interface", "no service config", "no service dhcp", "no service finger", "no service pad", "no service tcp-small-servers", "no service udp-small-servers", "no shutdown", "no switchport", "ntp authenticate", "ntp authentication-key", "ntp server", "ntp trusted-key", "option", "passive-interface", "password", "permit", "privilege", "redistribute", "router eigrp", "router ospf", "router-id", "security", "service password-encryption", "service sequence-numbers", "service tcp-keepalives-in", "service tcp-keepalives-out", "service timestamps", "shutdown", "snmp-server community", "snmp-server contact", "snmp-server group", "snmp-server host", "snmp-server location", "snmp-server user", "spanning-tree bpduguard", "spanning-tree guard", "spanning-tree loopguard", "spanning-tree mode", "spanning-tree portfast", "spanning-tree vlan", "speed", "standby", "storm-control", "summary-address", "switchport access", "switchport mode", "switchport nonegotiate", "switchport port-security", "switchport trunk", "switchport voice", "timers", "transport input", "transport output", "username", "vlan", "vtp"], "K_BY_FIRST": {"no": 3, "ip": 2, "service": 2, "switchport": 2, "spanning-tree": 2, "logging": 2, "crypto": 3, "router": 2, "line": 2, "transport": 2, "access-list": 3, "aaa": 2, "snmp-server": 2, "ntp": 2, "login": 2}, "K_SPECIAL": [["no", "passive-interface", 2], ["no", "switchport", 2], ["no", "shutdown", 2], ["login", "local", 2]], "BLOCK_HEADERS": [["^interface\\s+\\S", "interface"], ["^line\\s+\\S", "line"], ["^router\\s+\\S", "router"], ["^vlan\\s+\\d", "vlan"], ["^ip\\s+dhcp\\s+pool\\b", "dhcp"], ["^ip\\s+access-list\\b", "acl"], ["^key\\s+chain\\b", "keychain"]], "GLOBAL_PATTERNS": ["^hostname\\b", "^service\\b", "^no\\s+service\\b", "^enable\\b", "^username\\b", "^crypto\\b", "^banner\\b", "^access-list\\b", "^end$", "^vtp\\b", "^ip\\s+(route|domain[-\\s]name|domain[-\\s]lookup|ssh|http|default-gateway|name-server|routing|cef|source-route|bootp|scp|tcp|dns|finger|gratuitous)\\b", "^ip\\s+nat\\s+(inside|outside)\\s+source\\b", "^ip\\s+nat\\s+pool\\b", "^ip\\s+dhcp\\s+(excluded-address|snooping(?!\\s+(trust|limit)))\\b", "^ip\\s+arp\\s+inspection(?!\\s+(trust|limit))\\b", "^no\\s+ip\\s+(domain[-\\s]lookup|http|source-route|bootp|finger|dns|gratuitous|routing|cef)\\b", "^no\\s+cdp\\s+run\\b", "^cdp\\s+run\\b", "^logging\\s+(?!synchronous\\b)\\S", "^no\\s+logging\\b", "^snmp-server\\b", "^no\\s+snmp-server\\b", "^ntp\\b", "^aaa\\b", "^spanning-tree\\s+(mode|vlan|portfast\\s+(default|bpduguard)|loopguard\\s+default|extend)\\b", "^errdisable\\b", "^clock\\s+timezone\\b", "^archive\\b", "^security\\b", "^login\\s+(block-for|on-failure|on-success|quiet-mode|delay)\\b", "^no\\s+lldp\\b", "^lldp\\b", "^no\\s+mop\\b"], "LINE_SUBCMDS": [["^login(\\s+local)?$", ["con", "vty"]], ["^transport\\s+(input|output)\\s", ["vty"]], ["^exec-timeout\\s", ["con", "vty"]], ["^access-class\\s", ["vty"]], ["^logging\\s+synchronous$", ["con"]]], "INTERFACE_SUBCMD": "^(switchport|spanning-tree\\s+(bpduguard|portfast|guard)|ip\\s+address|no\\s+shutdown|shutdown|ip\\s+nat\\s+(inside|outside)$|ip\\s+ospf|ip\\s+authentication|ip\\s+access-group|no\\s+ip\\s+(redirects|proxy-arp|unreachables|directed-broadcast)|description|encapsulation|ip\\s+helper-address|storm-control|duplex|speed|no\\s+cdp\\s+enable)\\b", "ROUTER_SUBCMD": "^(network|passive-interface|no\\s+passive-interface|area|router-id|redistribute|default-information|no\\s+auto-summary|auto-summary|eigrp\\s+router-id|maximum-paths)\\b", "SWITCH_ONLY": "^(switchport|spanning-tree|vtp|ip\\s+dhcp\\s+snooping|ip\\s+arp\\s+inspection|storm-control)\\b", "INSECURE_PATTERNS": ["^enable\\s+password\\b", "^password\\s", "^username\\s+\\S+.*\\bpassword\\b", "^transport\\s+input\\s+(telnet|all)\\b", "^transport\\s+input\\s+.*telnet", "^login$", "^no\\s+login$", "^ip\\s+http\\s+(server|secure-server)", "^cdp\\s+run", "^service\\s+(tcp|udp)-small-servers", "^ip\\s+source-route", "^ip\\s+bootp\\s+server", "^no\\s+service\\s+password-encryption", "^ip\\s+ssh\\s+version\\s+1", "^snmp-server\\s+community\\s+(public|private)\\b", "^exec-timeout\\s+0\\s+0", "^no\\s+exec-timeout", "^switchport\\s+mode\\s+dynamic", "^service\\s+pad", "^ip\\s+domain[-\\s]lookup"], "IFACE_ALIASES": {"g": "gigabitethernet", "gi": "gigabitethernet", "gig": "gigabitethernet", "gigabitethernet": "gigabitethernet", "f": "fastethernet", "fa": "fastethernet", "fastethernet": "fastethernet", "s": "serial", "se": "serial", "serial": "serial", "e": "ethernet", "eth": "ethernet", "ethernet": "ethernet", "lo": "loopback", "loopback": "loopback", "vl": "vlan", "vlan": "vlan", "te": "tengigabitethernet", "tengigabitethernet": "tengigabitethernet", "po": "port-channel", "port-channel": "port-channel"}, "GLOBAL_BUCKETS": [["^hostname\\b", "identity"], ["^(service\\s+(password-encryption|timestamps)|no\\s+ip\\s+domain[-\\s]lookup|ip\\s+domain[-\\s]name|enable\\s|username\\s)", "credentials"], ["^(spanning-tree|vtp|ip\\s+dhcp\\s+snooping|ip\\s+arp\\s+inspection|errdisable)", "switch_global"], ["^(ip\\s+route|ip\\s+default-gateway|ip\\s+routing)\\b", "routing"], ["^(ip\\s+nat|ip\\s+dhcp)\\b", "nat_dhcp"], ["^banner\\b", "banner"], ["^(crypto|ip\\s+ssh|no\\s+ip|no\\s+cdp|no\\s+service|ip\\s+scp|login\\s|security)\\b", "hardening"], ["^access-list\\b", "acl"], ["^logging\\b", "logging"]], "BUCKET_ORDER": ["identity", "credentials", "switch_global", "vlan", "interface", "routing", "router", "nat_dhcp", "banner", "hardening", "acl", "line", "logging", "other"], "SYSTEM_PROMPT": "You are a network security expert specialising in Cisco router and switch configurations.\n\nWhen given an insecure network configuration your job is to:\n  1. Identify every security vulnerability and misconfiguration\n  2. Explain why each issue matters and what risk it creates\n  3. Output a fully corrected, production-hardened configuration\n  4. Show the security score improvement\n\nBe thorough, precise, and explain your reasoning clearly.", "DEFAULT_WRONG_CONFIG": "hostname OfficeRouter1\ninterface GigabitEthernet0/0\nip address 192.168.1.1 255.255.255.0\nno shutdown\ninterface GigabitEthernet0/1\nip address 192.168.2.1 255.255.255.0\nno shutdown\ninterface Serial0/0/0\nip address 203.0.113.2 255.255.255.252\nno shutdown\nip route 0.0.0.0 0.0.0.0 203.0.113.1", "HIGHLIGHT_COMPANIONS": [["no ip http", 10], ["ip ssh authentication-retries", 15], ["no ip unreachables", 23], ["no ip proxy-arp", 23], ["ip ospf message-digest-key", 7], ["key chain eigrp-key", 8]]};
+// ═══════════════════════════════════════════════════════════════════════════
+// Validation + scoring engine — a line-by-line port of the Python version in
+// test_model_claude.py. `T` holds the rule tables exported from that file.
+// ═══════════════════════════════════════════════════════════════════════════
+const Engine = (() => {
+  const WEIGHTS = { Red: 3, Yellow: 2, Green: 1 };
+  const FIX_LABELS = {
+    Red: "Very Critical Fixes (Red)",
+    Yellow: "Critical Fixes (Yellow)",
+    Green: "Normal Fixes (Green)",
+  };
+  const EXTENDED_ALLOWANCE = 10;
+
+  const rx = (p, flags = "i") => new RegExp(p, flags);
+  const SCORING = T.SCORING_RULES.map(([name, color, pat, why]) => ({ name, color, re: rx(pat), why }));
+  const VERIFIED = new Set(T.VERIFIED_SIGNATURES);
+  const K_SPECIAL = new Map(T.K_SPECIAL.map(([a, b, k]) => [a + "\u0000" + b, k]));
+  const BLOCK_HEADERS = T.BLOCK_HEADERS.map(([p, k]) => [rx(p), k]);
+  const GLOBAL_PATTERNS = T.GLOBAL_PATTERNS.map((p) => rx(p));
+  const LINE_SUBCMDS = T.LINE_SUBCMDS.map(([p, types]) => [rx(p), types]);
+  const INTERFACE_SUBCMD = rx(T.INTERFACE_SUBCMD);
+  const ROUTER_SUBCMD = rx(T.ROUTER_SUBCMD);
+  const SWITCH_ONLY = rx(T.SWITCH_ONLY);
+  const INSECURE = T.INSECURE_PATTERNS.map((p) => rx(p));
+  const GLOBAL_BUCKETS = T.GLOBAL_BUCKETS.map(([p, b]) => [rx(p), b]);
+
+  // ── Python-compatible helpers ──────────────────────────────────────────
+  const pySplit = (s) => { const t = s.trim(); return t ? t.split(/\s+/) : []; };
+  const splitLines = (s) => {                 // Python str.splitlines()
+    const a = (s || "").split(/\r\n|\n|\r/);
+    if (a.length && a[a.length - 1] === "") a.pop();
+    return a;
+  };
+  function pyRound(x) {                       // Python round(): half to even
+    const f = Math.floor(x), frac = x - f;
+    if (frac === 0.5) return f % 2 === 0 ? f : f + 1;
+    return Math.round(x);
+  }
+
+  function commandSignature(line) {
+    const toks = pySplit(line.toLowerCase().replace(/\d+/g, "N"));
+    if (!toks.length) return "";
+    let k = T.K_BY_FIRST[toks[0]] ?? 1;
+    if (toks.length > 1) k = K_SPECIAL.get(toks[0] + "\u0000" + toks[1]) ?? k;
+    return toks.slice(0, k).join(" ");
+  }
+  function isVerified(line) {
+    const s = commandSignature(line);
+    if (VERIFIED.has(s)) return true;
+    const first = s ? s.split(" ")[0] : "";
+    return VERIFIED.has(first) && !(first in T.K_BY_FIRST);
+  }
+  const matchesAny = (line, list) => list.some((r) => r.test(line.trim()));
+  function norm(line) {
+    return line.trim().toLowerCase().replace(/\s+/g, " ").replace(/\S*\$\S+/g, "<secret>");
+  }
+
+  function settingPrefix(line) {
+    const t = pySplit(line.toLowerCase());
+    if (!t.length) return "";
+    if (["ip", "logging", "switchport", "service"].includes(t[0]) && t.length >= 3 &&
+        ["ssh", "domain-name", "default-gateway", "buffered", "trap", "access", "timestamps", "address"].includes(t[1])) {
+      return t[1] === "ssh" ? t.slice(0, 3).join(" ") : t.slice(0, 2).join(" ");
+    }
+    if (["hostname", "exec-timeout", "description", "encapsulation", "router-id"].includes(t[0])) return t[0];
+    if (["enable", "banner", "transport", "login"].includes(t[0]) && t.length >= 2) {
+      return t[0] !== "login" ? t.slice(0, 2).join(" ") : "login";
+    }
+    if (t[0] === "switchport" && t.length >= 2 && t[1] === "mode") return "switchport mode";
+    return "";
+  }
+
+  const INCOMPLETE_CHECKS = [
+    [/^ip\s+route\b/i, (t) => t.length >= 5,
+      "incomplete static route — needs destination, mask and next-hop (e.g. ip route 0.0.0.0 0.0.0.0 <next-hop-ip>)"],
+    [/^ip\s+address\b/i, (t) => t.length >= 4 || (t.length >= 3 && ["dhcp", "negotiated"].includes(t[2])),
+      "incomplete IP address — needs address and subnet mask"],
+    [/^hostname\b/i, (t) => t.length >= 2, "hostname has no name"],
+    [/^interface\b/i, (t) => t.length >= 2, "interface has no name"],
+    [/^enable\s+secret\b/i, (t) => t.length >= 3, "enable secret has no value"],
+    [/^access-list\b/i, (t) => t.length >= 4, "incomplete access-list entry"],
+    [/^network\b/i, (t) => t.length >= 2, "incomplete network statement"],
+  ];
+  function checkIncomplete(line) {
+    const s = line.trim();
+    if (/^banner\b/i.test(s)) {
+      const m = /^banner\s+\S+\s+(\^C|\S)/i.exec(s);
+      if (!m) return "banner has no text";
+      if (!s.slice(m[0].length).toLowerCase().includes(m[1].toLowerCase()))
+        return "banner is not closed with its delimiter (would swallow the rest of the config)";
+      return null;
+    }
+    const t = pySplit(s);
+    for (const [re, ok, msg] of INCOMPLETE_CHECKS) if (re.test(s) && !ok(t)) return msg;
+    return null;
+  }
+
+  function blockKey(kind, header) {
+    const h = header.trim().toLowerCase().replace(/\s+/g, " ");
+    if (kind === "interface") {
+      let name = h.includes(" ") ? h.slice(h.indexOf(" ") + 1) : "";
+      const m = /^([a-z-]+)\s*([\d/.:]+)$/.exec(name);
+      if (m) name = (T.IFACE_ALIASES[m[1]] ?? m[1]) + m[2];
+      return "interface " + name;
+    }
+    if (kind === "line") return h.replace("line console", "line con");
+    return h;
+  }
+
+  class Block {
+    constructor(kind, header) { this.kind = kind; this.header = header.trim(); this.subs = []; }
+    get key() { return blockKey(this.kind, this.header); }
+    has(line) { const n = norm(line); return this.subs.some((s) => norm(s) === n); }
+    add(line) { if (!this.has(line)) this.subs.push(line.trim()); }
+  }
+  class Config {
+    constructor() { this.globals = []; this.blocks = []; }
+    find(key) { return this.blocks.find((b) => b.key === key) || null; }
+    allLines() {
+      const out = [...this.globals];
+      for (const b of this.blocks) { out.push(b.header); out.push(...b.subs); }
+      return out;
+    }
+    hasGlobal(line) { const n = norm(line); return this.globals.some((g) => norm(g) === n); }
+  }
+
+  function blockKind(line) {
+    for (const [re, kind] of BLOCK_HEADERS) if (re.test(line)) return kind;
+    return null;
+  }
+
+  function parseConfig(text) {
+    const cfg = new Config();
+    let cur = null;
+    const raw = splitLines(text || "").map((l) => l.replace(/\s+$/, ""));
+    let i = 0;
+    while (i < raw.length) {
+      let line = raw[i].trim();
+      i++;
+      if (!line || line.startsWith("!") || /^end$/i.test(line)) continue;
+      if (/^banner\s+\S+/i.test(line)) {
+        const m = /^banner\s+\S+\s+(\^C|\S)/i.exec(line);
+        if (!m) {
+          const text = [];
+          while (i < raw.length) {
+            const nxt = raw[i].trim();
+            if (!nxt || /^end$/i.test(nxt) || blockKind(nxt) || matchesAny(nxt, GLOBAL_PATTERNS)) break;
+            text.push(nxt.replace(/#/g, ""));
+            i++;
+          }
+          if (text.length) {
+            const w = pySplit(line);
+            line = `${w[0]} ${w[1]} #${text.join(" ")}#`;
+          }
+        }
+        if (m) {
+          const delim = m[1];
+          const rest = line.slice(m[0].length);
+          if (!rest.toLowerCase().includes(delim.toLowerCase())) {
+            const closesLater = raw.slice(i).some((r) => r.toLowerCase().includes(delim.toLowerCase()));
+            const parts = [line];
+            let broke = false;
+            while (i < raw.length) {
+              const nxt = raw[i];
+              if (!closesLater && (!nxt.trim() || blockKind(nxt.trim()) || matchesAny(nxt.trim(), GLOBAL_PATTERNS))) {
+                parts.push(delim); broke = true; break;
+              }
+              parts.push(nxt);
+              i++;
+              if (closesLater && nxt.toLowerCase().includes(delim.toLowerCase())) { broke = true; break; }
+            }
+            if (!broke && !closesLater) parts.push(delim);
+            line = parts.join("\n");
+          }
+        }
+        cfg.globals.push(line);
+        cur = null;
+        continue;
+      }
+      const kind = blockKind(line);
+      if (kind) {
+        const existing = cfg.find(blockKey(kind, line));
+        cur = existing || new Block(kind, line);
+        if (!existing) cfg.blocks.push(cur);
+        continue;
+      }
+      if (matchesAny(line, GLOBAL_PATTERNS)) { cfg.globals.push(line); cur = null; continue; }
+      if (cur !== null) cur.add(line); else cfg.globals.push(line);
+    }
+    return cfg;
+  }
+
+  const splitCommands = (text) => splitLines(text || "").flatMap((raw) => raw.split(";")).join("\n");
+
+  function detectCategory(configText) {
+    const t = configText.toLowerCase();
+    const checks = [
+      [/^\s*router\s+ospf/m, "OSPF Routing"],
+      [/^\s*router\s+eigrp/m, "EIGRP / Static Routing"],
+      [/^\s*ip\s+nat\s/m, "NAT -- Static/Dynamic/PAT"],
+      [/^\s*ip\s+dhcp\s+pool/m, "DHCP Configuration"],
+      [/encapsulation\s+dot1q|switchport\s+mode\s+trunk|switchport\s+trunk/m, "Trunking and Inter-VLAN Routing"],
+      [/^\s*vlan\s+\d/m, "VLAN Configurations"],
+      [/^\s*switchport|^\s*spanning-tree|^\s*interface\s+(range|vlan)/m, "Basic Switch Configurations"],
+      [/^\s*(ip\s+)?access-list/m, "ACL -- Standard & Extended"],
+      [/^\s*line\s+vty|transport\s+input/m, "SSH / Telnet and Remote Access"],
+    ];
+    for (const [re, cat] of checks) if (re.test(t)) return cat;
+    return "Basic Router Configurations";
+  }
+  const isSwitchConfig = (text) =>
+    /^\s*(switchport|spanning-tree|vlan\s+\d|interface\s+(range|vlan))/im.test(text);
+
+  function vtyRange(key) {
+    const m = /^line vty (\d+)(?: (\d+))?$/.exec(key);
+    if (!m) return null;
+    const a = parseInt(m[1], 10);
+    return [a, m[2] !== undefined ? parseInt(m[2], 10) : a];
+  }
+
+  // ── Main pipeline (one device) ─────────────────────────────────────────
+  function postprocessDevice(inputConfig, modelCode, modelCorrections) {
+    const notes = { removed: [], restored: [], relocated: [], input_issues: [], warnings: [], not_applied: [] };
+    const inp = parseConfig(inputConfig);
+    const out = parseConfig(modelCode);
+    const sw = isSwitchConfig(inputConfig);
+    const inputNorms = new Set(inp.allLines().map(norm));
+
+    // 1. Input problems
+    const badInput = new Set();
+    for (const l of inp.allLines()) {
+      const msg = checkIncomplete(l);
+      if (msg) { notes.input_issues.push([l.trim(), msg]); badInput.add(norm(l)); }
+    }
+
+    // 2. Merge commands listed as corrections but missing from the code block
+    for (const c of modelCorrections) {
+      const add = parseConfig(splitCommands(c.added_configuration || ""));
+      for (const g of add.globals) {
+        const p = settingPrefix(g);
+        if (out.allLines().some((x) => norm(g) === norm(x))) continue;
+        if (p && out.globals.some((x) => settingPrefix(x) === p)) continue;
+        out.globals.push(g);
+      }
+      for (const b of add.blocks) {
+        const tgt = out.find(b.key);
+        if (tgt === null) out.blocks.push(b);
+        else for (const s of b.subs) tgt.add(s);
+      }
+    }
+
+    // 3. Sub-commands at global level -> correct block
+    const kept = [];
+    for (const g of out.globals) {
+      let placed = false;
+      for (const [re, types] of LINE_SUBCMDS) {
+        if (re.test(g.trim())) {
+          let targets = out.blocks.filter((b) => b.kind === "line" && types.some((t) => b.key.startsWith("line " + t)));
+          if (!targets.length) {
+            const b = new Block("line", types.includes("vty") ? "line vty 0 4" : "line con 0");
+            out.blocks.push(b);
+            targets = [b];
+          }
+          for (const b of targets) {
+            if (!b.has(g)) { b.add(g); notes.relocated.push([g.trim(), b.header]); }
+          }
+          placed = true;
+          break;
+        }
+      }
+      if (!placed && ROUTER_SUBCMD.test(g.trim())) {
+        const routers = out.blocks.filter((b) => b.kind === "router");
+        if (routers.length === 1) { routers[0].add(g); notes.relocated.push([g.trim(), routers[0].header]); }
+        else notes.not_applied.push([g.trim(), "routing sub-command with no single routing process to attach to"]);
+        placed = true;
+      }
+      if (!placed && INTERFACE_SUBCMD.test(g.trim())) {
+        if (!inputNorms.has(norm(g))) {
+          notes.not_applied.push([g.trim(), "interface-level command — cannot tell which interface it belongs to"]);
+          placed = true;
+        }
+      }
+      if (!placed) kept.push(g);
+    }
+    out.globals = kept;
+
+    // 4. Remove invalid model-added lines
+    const removalReason = (line) => {
+      if (badInput.has(norm(line))) return "incomplete command (see input issues)";
+      if (inputNorms.has(norm(line))) return null;
+      const inc = checkIncomplete(line);
+      if (inc) return inc;
+      if (!sw && SWITCH_ONLY.test(line.trim())) return "switch-only command — this device is a router";
+      if (!isVerified(line.split("\n")[0])) return "not a recognised Cisco IOS command (likely hallucinated)";
+      return null;
+    };
+    out.globals = out.globals.filter((g) => {
+      const r = removalReason(g);
+      if (r) { notes.removed.push([g.trim(), r]); return false; }
+      return true;
+    });
+    const newBlocks = [];
+    for (const b of out.blocks) {
+      if (!sw && b.kind === "vlan" && !inputNorms.has(norm(b.header))) {
+        notes.removed.push([b.header, "VLAN database is switch-only — this device is a router"]);
+        continue;
+      }
+      b.subs = b.subs.filter((s) => {
+        const r = removalReason(s);
+        if (r) { notes.removed.push([s.trim(), `${r} [${b.header}]`]); return false; }
+        return true;
+      });
+      newBlocks.push(b);
+    }
+    out.blocks = newBlocks;
+
+    // 5. Protect the user's original config
+    for (const g of inp.globals) {
+      if (badInput.has(norm(g)) || matchesAny(g, INSECURE) || out.hasGlobal(g)) continue;
+      const p = settingPrefix(g);
+      if (p && out.globals.some((x) => settingPrefix(x) === p)) continue;
+      out.globals.push(g);
+      notes.restored.push([g.trim(), "global"]);
+    }
+    for (const ib of inp.blocks) {
+      if (badInput.has(norm(ib.header))) continue;
+      let covering;
+      if (ib.kind === "line") {
+        const r = vtyRange(ib.key);
+        covering = out.blocks.filter((b) => {
+          if (b.kind !== "line") return false;
+          if (b.key === ib.key) return true;
+          const br = vtyRange(b.key);
+          return !!(r && br && br[0] <= r[0] && br[1] >= r[1]);
+        });
+        if (!covering.length && r) covering = out.blocks.filter((b) => b.key.startsWith("line vty"));
+      } else {
+        const ob = out.find(ib.key);
+        covering = ob ? [ob] : [];
+      }
+      if (!covering.length) {
+        const nb = new Block(ib.kind, ib.header);
+        nb.subs = ib.subs.filter((s) => !badInput.has(norm(s)) && !matchesAny(s, INSECURE));
+        out.blocks.push(nb);
+        notes.restored.push([ib.header, "whole block"]);
+        continue;
+      }
+      const tgt = covering[0];
+      if (ib.kind === "interface") {
+        const inIp = ib.subs.filter((s) => /^ip\s+address\s/i.test(s) && !badInput.has(norm(s)));
+        const outIp = tgt.subs.filter((s) => /^ip\s+address\s/i.test(s));
+        if (inIp.length && !outIp.some((s) => norm(s) === norm(inIp[0]))) {
+          tgt.subs = tgt.subs.filter((s) => !outIp.includes(s));
+          tgt.subs.unshift(inIp[0]);
+          notes.restored.push([inIp[0], tgt.header + (outIp.length ? " (model had changed it)" : "")]);
+        }
+        const inUp = ib.subs.some((s) => /^no\s+shutdown$/i.test(s));
+        const inUse = inUp || inIp.length > 0;
+        if (inUse && tgt.subs.some((s) => /^shutdown$/i.test(s))) {
+          tgt.subs = tgt.subs.filter((s) => !/^shutdown$/i.test(s));
+          notes.removed.push(["shutdown", `model shut down an in-use interface — reverted [${tgt.header}]`]);
+        }
+        if (inUp && !tgt.has("no shutdown")) {
+          tgt.subs.push("no shutdown");
+          notes.restored.push(["no shutdown", tgt.header]);
+        }
+      }
+      for (const s of ib.subs) {
+        if (badInput.has(norm(s)) || matchesAny(s, INSECURE) || tgt.has(s)) continue;
+        if (/^(ip\s+address\s|no\s+shutdown$|shutdown$)/i.test(s)) continue;
+        const p = settingPrefix(s);
+        if (p && tgt.subs.some((x) => settingPrefix(x) === p)) continue;
+        tgt.add(s);
+        notes.restored.push([s.trim(), tgt.header]);
+      }
+    }
+
+    // 6. Duplicates + sanity warnings
+    const seen = new Set();
+    out.globals = out.globals.filter((g) => { const n = norm(g); if (seen.has(n)) return false; seen.add(n); return true; });
+    const finalLines = out.allLines();
+    for (const l of finalLines)
+      if (matchesAny(l, INSECURE)) notes.warnings.push(`insecure setting still present: ${l.trim()}`);
+    const aclIds = new Set();
+    for (const l of finalLines) {
+      const m = /^(?:access-list|ip\s+access-list\s+\S+)\s+(\S+)/i.exec(l.trim());
+      if (m) aclIds.add(m[1].toLowerCase());
+    }
+    for (const l of finalLines) {
+      const m = /^access-class\s+(\S+)\s+in/i.exec(l.trim());
+      if (m && !aclIds.has(m[1].toLowerCase()))
+        notes.warnings.push(`'${l.trim()}' refers to ACL ${m[1]}, which is not defined`);
+    }
+    return [out, notes];
+  }
+
+  // ── Rendering in one consistent order ──────────────────────────────────
+  function renderConfig(cfg) {
+    const buckets = Object.fromEntries(T.BUCKET_ORDER.map((k) => [k, []]));
+    for (const g of cfg.globals) {
+      const hit = GLOBAL_BUCKETS.find(([re]) => re.test(g.trim()));
+      buckets[hit ? hit[1] : "other"].push(g.trim());
+    }
+    const kindMap = { interface: "interface", vlan: "vlan", router: "router", keychain: "router",
+                      dhcp: "nat_dhcp", acl: "acl", line: "line" };
+    for (const b of cfg.blocks) buckets[kindMap[b.kind] ?? "other"].push(b);
+    const order = { con: 0, aux: 1, vty: 2 };
+    const lineSort = (b) => {
+      const parts = b.key.split(" ");
+      const typ = parts.length > 1 ? parts[1] : "";
+      const r = vtyRange(b.key);
+      return [order[typ] ?? 3, r ? r[0] : 0];
+    };
+    buckets.line.sort((a, b) => {
+      const x = lineSort(a), y = lineSort(b);
+      return x[0] - y[0] || x[1] - y[1];
+    });
+    const sections = [];
+    for (const name of T.BUCKET_ORDER) {
+      const lines = [];
+      for (const item of buckets[name]) {
+        if (item instanceof Block) { lines.push(item.header); lines.push(...item.subs); }
+        else lines.push(item);
+      }
+      if (lines.length) sections.push(lines.join("\n"));
+    }
+    sections.push("end");
+    return sections.join("\n\n");
+  }
+
+  // ── Multi-device ───────────────────────────────────────────────────────
+  function splitDevices(text) {
+    const sections = [];
+    let cur = [];
+    for (const line of splitLines(text || "")) {
+      if (/^\s*hostname\s+\S/i.test(line) && cur.some((l) => /^\s*hostname\s/i.test(l))) {
+        sections.push(cur.join("\n"));
+        cur = [];
+      }
+      cur.push(line);
+    }
+    if (cur.some((l) => l.trim())) sections.push(cur.join("\n"));
+    return sections.length ? sections : [""];
+  }
+  function deviceName(section) {
+    const m = /^\s*hostname\s+(\S+)/im.exec(section);
+    return m ? m[1] : null;
+  }
+
+  function postprocess(inputConfig, modelCode, modelCorrections) {
+    const inSecs = splitDevices(inputConfig), outSecs = splitDevices(modelCode);
+    if (inSecs.length <= 1) {
+      const [cfg, notes] = postprocessDevice(inputConfig, modelCode, modelCorrections);
+      return [renderConfig(cfg), notes];
+    }
+    const outByName = new Map();
+    for (const s of outSecs) {
+      const n = deviceName(s);
+      if (n && !outByName.has(n.toLowerCase())) outByName.set(n.toLowerCase(), s);
+    }
+    const allNotes = {};
+    const rendered = [];
+    inSecs.forEach((sec, idx) => {
+      const name = deviceName(sec) || `device${idx + 1}`;
+      let match = outByName.get(name.toLowerCase());
+      if (match === undefined && outSecs.length === inSecs.length) match = outSecs[idx];
+      const [cfg, notes] = postprocessDevice(sec, match || "", modelCorrections);
+      for (const [k, v] of Object.entries(notes)) {
+        allNotes[k] = allNotes[k] || [];
+        for (const x of v) allNotes[k].push(Array.isArray(x) ? [`[${name}] ${x[0]}`, x[1]] : `[${name}] ${x}`);
+      }
+      rendered.push(`! ===== Device: ${name} =====\n` + renderConfig(cfg));
+    });
+    return [rendered.join("\n\n"), allNotes];
+  }
+
+  // ── Scoring (thesis formula) ───────────────────────────────────────────
+  function rulesPresent(configText) {
+    const lines = splitLines(configText).map((l) => l.trim());
+    const present = new Set();
+    SCORING.forEach((r, i) => { if (lines.some((l) => r.re.test(l))) present.add(i); });
+    return present;
+  }
+  function scoreConfigs(inputConfig, finalConfig) {
+    const before = rulesPresent(inputConfig), after = rulesPresent(finalConfig);
+    let total = 0, already = 0;
+    for (const i of after) { total += WEIGHTS[SCORING[i].color]; if (before.has(i)) already += WEIGHTS[SCORING[i].color]; }
+    const denom = total + EXTENDED_ALLOWANCE;
+    const beforePct = pyRound(100 * already / denom), afterPct = pyRound(100 * total / denom);
+    const fixes = { Red: [], Yellow: [], Green: [] };
+    [...after].filter((i) => !before.has(i)).sort((a, b) => a - b).forEach((i) => fixes[SCORING[i].color].push(i));
+    const alreadyList = [...after].filter((i) => before.has(i)).sort((a, b) => a - b);
+    // Each level's share of the score, largest-remainder rounded to add up to the improvement
+    const pts = { Red: fixes.Red.length * 3, Yellow: fixes.Yellow.length * 2, Green: fixes.Green.length * 1 };
+    const improvement = afterPct - beforePct;
+    const exact = Object.fromEntries(Object.entries(pts).map(([c, p]) => [c, 100 * p / denom]));
+    const pct = Object.fromEntries(Object.entries(exact).map(([c, e]) => [c, Math.trunc(e)]));
+    const diff = improvement - Object.values(pct).reduce((a, b) => a + b, 0);
+    const orderC = Object.keys(pts).sort((a, b) => {
+      const fa = exact[a] - Math.trunc(exact[a]), fb = exact[b] - Math.trunc(exact[b]);
+      return diff > 0 ? fb - fa : fa - fb;
+    });
+    for (const c of orderC.slice(0, Math.abs(diff))) pct[c] += diff > 0 ? 1 : -1;
+    return { before: beforePct, after: afterPct, improvement, fixes, already: alreadyList, points: pts, pct, denom };
+  }
+
+  function explainFixes(fixIds, modelCorrections, finalConfig) {
+    const finalLines = splitLines(finalConfig).map((l) => l.trim());
+    return fixIds.map((i) => {
+      const r = SCORING[i];
+      const line = finalLines.find((l) => r.re.test(l)) || "";
+      let why = r.why;
+      for (const c of modelCorrections) {
+        const snippet = splitCommands(c.added_configuration || "");
+        if (splitLines(snippet).some((s) => r.re.test(s.trim())) && c.why_it_matters) { why = c.why_it_matters.trim(); break; }
+      }
+      return { rule: r.name, color: r.color, line: line.split("\n")[0], why };
+    });
+  }
+
+  // ── Line-by-line highlighting of the corrected configuration ───────────
+  // Companion lines (learned from the dataset): extra lines that belong to a
+  // fix, e.g. "no ip http secure-server" belongs to the HTTP-server fix.
+  const EIGRP = SCORING.findIndex((r) => r.name.startsWith("EIGRP authentication"));
+  const COMPANIONS = [...T.HIGHLIGHT_COMPANIONS,
+    ["key chain", EIGRP], ["key-string", EIGRP], ["key N", EIGRP], ["ip authentication key-chain", EIGRP]];
+  const sig3 = (line) => pySplit(line.toLowerCase().replace(/\d+/g, "N")).slice(0, 3).join(" ");
+
+  function annotateConfig(inputConfig, finalConfig, score, notes) {
+    // Per-device lookups, so multi-device configs don't mix devices up
+    const buildSets = (text) => {
+      const lines = splitLines(text).map((l) => l.trim()).filter(Boolean);
+      const keys = new Set();
+      for (const l of lines) { const k = blockKind(l); if (k) keys.add(blockKey(k, l)); }
+      return { norms: new Set(lines.map(norm)), keys };
+    };
+    const inSecs = splitDevices(inputConfig);
+    const multi = inSecs.length > 1;
+    const perDevice = new Map();
+    if (multi) inSecs.forEach((sec, idx) => perDevice.set((deviceName(sec) || `device${idx + 1}`).toLowerCase(), buildSets(sec)));
+    const whole = buildSets(inputConfig);
+
+    const fixColor = new Map();
+    for (const c of ["Red", "Yellow", "Green"]) for (const i of score.fixes[c]) fixColor.set(i, c);
+
+    const restoredKeys = new Set(), restoredBlocks = new Set();
+    for (const [line, where] of notes.restored || []) {
+      const m = /^\[([^\]]+)\]\s*/.exec(line);
+      const dev = multi && m ? m[1].toLowerCase() : "";
+      const l = m && multi ? line.slice(m[0].length) : line;
+      const w = where.replace(/ \(model had changed it\)$/, "");
+      if (w === "whole block") restoredBlocks.add(`${dev}|${norm(l)}`);
+      else restoredKeys.add(`${dev}|${w === "global" ? "global" : norm(w)}|${norm(l)}`);
+    }
+
+    const out = [];
+    let device = "", sets = whole, context = "global", banner = null, blockRestored = false;
+    for (const text of splitLines(finalConfig)) {
+      const s = text.trim();
+      if (banner) {                                   // continuation of a multi-line banner
+        out.push({ text, kind: banner.kind, rule: banner.rule });
+        if (s.toLowerCase().includes(banner.delim.toLowerCase())) banner = null;
+        continue;
+      }
+      const dm = /^!\s*=+\s*Device:\s*(\S+)\s*=+/i.exec(s);
+      if (dm && multi) { device = dm[1].toLowerCase(); sets = perDevice.get(device) || whole; }
+      if (!s || s.startsWith("!") || /^end$/i.test(s)) {
+        if (!s || s.startsWith("!")) { context = "global"; blockRestored = false; }
+        out.push({ text, kind: "plain", rule: "" });
+        continue;
+      }
+      const kind0 = blockKind(s);
+      if (kind0) { context = norm(s); blockRestored = restoredBlocks.has(`${device}|${norm(s)}`); }
+      else if (matchesAny(s, GLOBAL_PATTERNS)) { context = "global"; blockRestored = false; }
+
+      let kind = "plain", rule = "";
+      const inInput = kind0 ? sets.keys.has(blockKey(kind0, s)) : sets.norms.has(norm(s));
+      if (blockRestored || restoredKeys.has(`${device}|${kind0 ? "global" : context}|${norm(s)}`)) {
+        kind = "restored"; rule = "Restored from your original configuration by the validator";
+      } else if (!inInput) {
+        kind = "added"; rule = "Added by the model (not a scored rule)";
+        for (const [i, c] of fixColor) {
+          if (SCORING[i].re.test(s)) { kind = c.toLowerCase(); rule = SCORING[i].name; break; }
+        }
+        if (kind === "added") {
+          const sg = sig3(s);
+          for (const [p, i] of COMPANIONS) {
+            if (fixColor.has(i) && sg.startsWith(p)) { kind = fixColor.get(i).toLowerCase(); rule = SCORING[i].name; break; }
+          }
+        }
+      }
+      const bm = /^banner\s+\S+\s+(\^C|\S)/i.exec(s);
+      if (bm && !s.slice(bm[0].length).toLowerCase().includes(bm[1].toLowerCase())) banner = { delim: bm[1], kind, rule };
+      out.push({ text, kind, rule });
+    }
+    return out;
+  }
+
+  // ── Model response parsing (same Markdown format the model was trained on) ─
+  const HEADING_TO_CRITICALITY = { "CRITICAL (RED)": "Red", "IMPORTANT (ORANGE)": "Yellow", "BEST PRACTICE (GREEN)": "Green" };
+  function parseMarkdownResponse(raw) {
+    const result = { corrected_code: "", corrections: [], score: null };
+    const code = /## Corrected Secure Configuration\s*```(?:\w*\n)?([\s\S]*?)```/.exec(raw);
+    if (code) result.corrected_code = code[1].trim();
+    const secRe = /###\s*(CRITICAL\s*\(Red\)|IMPORTANT\s*\(Orange\)|BEST PRACTICE\s*\(Green\))\s*\n([\s\S]*?)(?=\n###|\n##|$(?![\s\S]))/gi;
+    const itemRe = /\*\*(.+?)\*\*\s*\n-\s*Added:\s*`(.*?)`\s*\n-\s*Why:\s*(.+?)(?=\n\n|\n\*\*|$(?![\s\S]))/gs;
+    let sec;
+    while ((sec = secRe.exec(raw)) !== null) {
+      let key = sec[1].toUpperCase().replace(/ /g, "").replace(/(\w)\(/g, "$1 (");
+      const criticality = HEADING_TO_CRITICALITY[key] || "Green";
+      let item;
+      itemRe.lastIndex = 0;
+      while ((item = itemRe.exec(sec[2])) !== null) {
+        result.corrections.push({ criticality, rule: item[1].trim(), added_configuration: item[2].trim(), why_it_matters: item[3].trim() });
+      }
+    }
+    const s = /\|\s*Security\s*\|\s*(\d+)%\s*\|\s*(\d+)%\s*\|\s*\+?(\d+)%\s*\|/.exec(raw);
+    if (s) result.score = { before: s[1], after: s[2], improvement: s[3] };
+    return result;
+  }
+  function dedupCorrections(corrections) {
+    const seen = new Set();
+    return corrections.filter((c) => {
+      const k = (c.rule || "").trim() + "\u0000" + (c.added_configuration || "").trim();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+
+  function buildMessages(insecureCode, category) {
+    const user = `Please review this ${category} configuration. ` +
+      "Identify all security vulnerabilities and produce a fully corrected, hardened version.\n\n" +
+      "**Insecure Configuration:**\n```\n" + `${insecureCode}\n` + "```";
+    return [{ role: "system", content: T.SYSTEM_PROMPT }, { role: "user", content: user }];
+  }
+
+  return { WEIGHTS, FIX_LABELS, EXTENDED_ALLOWANCE, postprocess, scoreConfigs, explainFixes,
+           parseMarkdownResponse, dedupCorrections, detectCategory, isSwitchConfig, buildMessages, annotateConfig,
+           _internal: { commandSignature, isVerified, norm, parseConfig, checkIncomplete, pyRound, splitDevices, deviceName } };
+})();
+if (typeof module !== "undefined") module.exports = Engine;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Network topology — works out the network drawn by a Cisco configuration:
+// devices, their subnets, links between devices, routes out, and a few
+// security badges per device. Pure data (no DOM), so it can be tested alone.
+// ═══════════════════════════════════════════════════════════════════════════
+const Topology = (() => {
+  const I = Engine._internal;
+
+  // ── IPv4 helpers ───────────────────────────────────────────────────────
+  function ipToInt(s) {
+    const p = String(s).split(".");
+    if (p.length !== 4) return null;
+    let n = 0;
+    for (const x of p) {
+      if (!/^\d{1,3}$/.test(x) || +x > 255) return null;
+      n = n * 256 + +x;
+    }
+    return n;
+  }
+  const intToIp = (n) => [Math.floor(n / 16777216) % 256, Math.floor(n / 65536) % 256, Math.floor(n / 256) % 256, n % 256].join(".");
+  function maskToPrefix(m) {
+    const n = ipToInt(m);
+    if (n === null) return null;
+    let p = 0;
+    for (let i = 31; i >= 0; i--) { if (Math.floor(n / 2 ** i) % 2 === 1) p++; else break; }
+    return p;
+  }
+  const blockSize = (prefix) => 2 ** (32 - prefix);
+  const netOf = (ip, prefix) => ip - (ip % blockSize(prefix));
+  const inSubnet = (ip, net, prefix) => ip !== null && netOf(ip, prefix) === net;
+  const cidr = (net, prefix) => `${intToIp(net)}/${prefix}`;
+  function wildcardMatch(ip, base, wild) {          // "network A W" statements
+    if (ip === null || base === null || wild === null) return false;
+    for (let i = 0; i < 4; i++) {
+      const b = Math.floor(ip / 256 ** (3 - i)) % 256, a = Math.floor(base / 256 ** (3 - i)) % 256;
+      const w = Math.floor(wild / 256 ** (3 - i)) % 256;
+      for (let bit = 0; bit < 8; bit++) {
+        const m = 2 ** bit;
+        if (Math.floor(w / m) % 2 === 0 && Math.floor(a / m) % 2 !== Math.floor(b / m) % 2) return false;
+      }
+    }
+    return true;
+  }
+  function classfulWildcard(ip) {
+    const first = Math.floor(ip / 16777216);
+    return ipToInt(first < 128 ? "0.255.255.255" : first < 192 ? "0.0.255.255" : "0.0.0.255");
+  }
+
+  const SHORT = [[/^tengigabitethernet/i, "Te"], [/^gigabitethernet/i, "Gi"], [/^fastethernet/i, "Fa"], [/^ethernet/i, "Eth"],
+                 [/^serial/i, "Se"], [/^loopback/i, "Lo"], [/^port-channel/i, "Po"], [/^vlan/i, "Vlan"]];
+  const shortIf = (name) => { for (const [re, s] of SHORT) if (re.test(name)) return name.replace(re, s); return name; };
+  const sameIf = (a, b) => shortIf(a.replace(/\s+/g, "")).toLowerCase() === shortIf(b.replace(/\s+/g, "")).toLowerCase();
+
+  // ── One device ─────────────────────────────────────────────────────────
+  function parseDevice(text, idx) {
+    const cfg = I.parseConfig(text);
+    const g = cfg.globals.map((l) => l.trim());
+    const host = (g.find((l) => /^hostname\s+\S/i.test(l)) || "").split(/\s+/)[1];
+    const dev = {
+      name: host || `Device ${idx + 1}`, isSwitch: Engine.isSwitchConfig(text),
+      interfaces: [], routes: [], gateway: null, pools: [], routing: [], vtyAcl: null, badges: [], vlans: [],
+      ipRouting: false,
+    };
+    for (const b of cfg.blocks) {
+      if (b.kind === "interface") {
+        const raw = b.header.replace(/^interface\s+/i, "").trim();
+        const range = /^range\s/i.test(raw);
+        const name = raw.replace(/^range\s+/i, "").replace(/\s+/g, "");
+        const it = { name, short: shortIf(name), range, ip: null, prefix: null, dhcp: false, shut: false,
+                     mode: null, vlan: null, allowed: null, nat: null, dot1q: null, portSecurity: false, desc: "" };
+        for (const s0 of b.subs) {
+          const s = s0.trim(); let m;
+          if ((m = /^ip\s+address\s+(\S+)\s+(\S+)(\s+secondary)?$/i.exec(s)) && !m[3]) {
+            const ip = ipToInt(m[1]), p = maskToPrefix(m[2]);
+            if (ip !== null && p !== null) { it.ip = ip; it.prefix = p; }
+          } else if (/^ip\s+address\s+dhcp/i.test(s)) it.dhcp = true;
+          else if (/^shutdown$/i.test(s)) it.shut = true;
+          else if (/^no\s+shutdown$/i.test(s)) it.shut = false;
+          else if ((m = /^switchport\s+mode\s+(access|trunk)/i.exec(s))) it.mode = m[1].toLowerCase();
+          else if ((m = /^switchport\s+access\s+vlan\s+(\d+)/i.exec(s))) it.vlan = +m[1];
+          else if ((m = /^switchport\s+trunk\s+allowed\s+vlan\s+(\S+)/i.exec(s))) it.allowed = m[1];
+          else if ((m = /^ip\s+nat\s+(inside|outside)$/i.exec(s))) it.nat = m[1].toLowerCase();
+          else if ((m = /^encapsulation\s+dot1q\s+(\d+)/i.exec(s))) it.dot1q = +m[1];
+          else if (/^switchport\s+port-security$/i.test(s)) it.portSecurity = true;
+          else if ((m = /^description\s+(.+)$/i.exec(s))) it.desc = m[1];
+        }
+        if (it.mode === "access" && it.vlan === null) it.vlan = 1;
+        dev.interfaces.push(it);
+      } else if (b.kind === "vlan") {
+        for (const v of b.header.replace(/^vlan\s+/i, "").split(",")) if (/^\d+$/.test(v.trim())) dev.vlans.push(+v.trim());
+      } else if (b.kind === "dhcp") {
+        const pool = { name: b.header.replace(/^ip\s+dhcp\s+pool\s+/i, ""), net: null, prefix: null };
+        for (const s of b.subs) {
+          const m = /^network\s+(\S+)\s+(\S+)/i.exec(s.trim());
+          if (m) {
+            const n = ipToInt(m[1]);
+            const p = m[2].startsWith("/") ? +m[2].slice(1) : maskToPrefix(m[2]);
+            if (n !== null && p !== null) { pool.net = netOf(n, p); pool.prefix = p; }
+          }
+        }
+        dev.pools.push(pool);
+      } else if (b.kind === "router") {
+        const m = /^router\s+(ospf|eigrp)\s+(\S+)/i.exec(b.header);
+        if (!m) continue;
+        const proc = { proto: m[1].toUpperCase(), id: m[2], networks: [] };
+        for (const s of b.subs) {
+          const n = /^network\s+(\S+)(?:\s+(\d+\.\d+\.\d+\.\d+))?(?:\s+area\s+(\S+))?/i.exec(s.trim());
+          if (!n) continue;
+          const base = ipToInt(n[1]);
+          if (base === null) continue;
+          proc.networks.push({ base, wild: n[2] ? ipToInt(n[2]) : classfulWildcard(base), area: n[3] ?? null });
+        }
+        dev.routing.push(proc);
+      } else if (b.kind === "line" && /^line\s+vty/i.test(b.header)) {
+        for (const s of b.subs) { const m = /^access-class\s+(\S+)\s+in/i.exec(s.trim()); if (m) dev.vtyAcl = m[1]; }
+      }
+    }
+    for (const l of g) {
+      let m;
+      if ((m = /^ip\s+route\s+(\S+)\s+(\S+)\s+(\S+)/i.exec(l))) {
+        const dest = ipToInt(m[1]), p = maskToPrefix(m[2]);
+        if (dest !== null && p !== null) dev.routes.push({ dest, prefix: p, via: m[3], viaIp: ipToInt(m[3]) });
+      } else if ((m = /^ip\s+default-gateway\s+(\S+)/i.exec(l))) dev.gateway = ipToInt(m[1]);
+      else if (/^ip\s+routing$/i.test(l)) dev.ipRouting = true;
+    }
+    dev.badges = securityBadges(cfg, g);
+    return dev;
+  }
+
+  // A few headline security facts per device (green = secure, red = insecure)
+  function securityBadges(cfg, g) {
+    const badges = [];
+    const vty = cfg.blocks.filter((b) => b.kind === "line" && /^line\s+vty/i.test(b.header));
+    if (vty.length) {
+      const transports = vty.map((b) => (b.subs.find((s) => /^transport\s+input\s/i.test(s.trim())) || "").toLowerCase());
+      if (transports.some((t) => /telnet|\ball\b/.test(t))) badges.push(["bad", "Telnet allowed"]);
+      else if (transports.every((t) => /^transport\s+input\s+ssh\s*$/.test(t.trim()))) badges.push(["good", "SSH only"]);
+      else if (transports.some((t) => !t)) badges.push(["bad", "Telnet allowed (default)"]);
+    }
+    if (g.some((l) => /^enable\s+secret\s+\S/i.test(l))) badges.push(["good", "Enable secret"]);
+    else if (g.some((l) => /^enable\s+password\s+\S/i.test(l))) badges.push(["bad", "Plaintext enable password"]);
+    else badges.push(["bad", "No enable password"]);
+    if (g.some((l) => /^ip\s+http\s+server/i.test(l))) badges.push(["bad", "Web server on"]);
+    else if (g.some((l) => /^no\s+ip\s+http\s+server/i.test(l))) badges.push(["good", "Web server off"]);
+    const acl = vty.flatMap((b) => b.subs).find((s) => /^access-class\s+\S+\s+in/i.test(s.trim()));
+    if (acl) badges.push(["good", `Login restricted to ACL ${acl.trim().split(/\s+/)[1]}`]);
+    return badges;
+  }
+
+  // ── Whole network ──────────────────────────────────────────────────────
+  function build(configText) {
+    const sections = I.splitDevices(configText || "");
+    const devices = sections.filter((s) => s.trim()).map(parseDevice);
+    const topo = { devices: [], tops: [], bottoms: [], links: [] };
+    if (!devices.length) return topo;
+    devices.sort((a, b) => (a.isSwitch === b.isSwitch ? 0 : a.isSwitch ? 1 : -1));
+    devices.forEach((d, i) => { d.id = `d${i}`; topo.devices.push({ id: d.id, name: d.name, type: d.isSwitch ? "Switch" : "Router", badges: d.badges,
+      vlans: [...new Set(d.vlans)].sort((a, b) => a - b) }); });
+    topo.inferred = false;
+
+    const tagsFor = (dev, it) => {
+      const tags = [];
+      if (it.nat) tags.push(`NAT ${it.nat}`);
+      for (const r of dev.routing) {
+        const hit = r.networks.find((n) => wildcardMatch(it.ip, n.base, n.wild));
+        if (hit) tags.push(r.proto === "OSPF" ? `OSPF area ${hit.area ?? "?"}` : `EIGRP ${r.id}`);
+      }
+      for (const p of dev.pools) if (p.net !== null && it.ip !== null && inSubnet(it.ip, p.net, p.prefix)) tags.push(`DHCP pool ${p.name}`);
+      return tags;
+    };
+
+    // 1. Group every addressed interface by subnet
+    const subnets = new Map();
+    for (const d of devices) for (const it of d.interfaces) {
+      if (it.ip === null || it.range || /^lo/i.test(it.short)) continue;
+      const key = cidr(netOf(it.ip, it.prefix), it.prefix);
+      if (!subnets.has(key)) subnets.set(key, []);
+      subnets.get(key).push({ d, it });
+    }
+    const used = new Set();                            // interfaces already drawn
+    const mark = (d, it) => used.add(`${d.id}|${it.name}`);
+    const isUsed = (d, it) => used.has(`${d.id}|${it.name}`);
+
+    // 2. Links between devices that share a subnet
+    for (const [key, members] of subnets) {
+      const devs = [...new Set(members.map((m) => m.d))];
+      if (devs.length < 2) continue;
+      for (let i = 1; i < members.length; i++) {
+        const a = members[0], b = members[i];
+        if (a.d === b.d) continue;
+        topo.links.push({ from: a.d.id, to: b.d.id, kind: "peer", label: key,
+          ends: [`${a.it.short} .${a.it.ip % 256}`, `${b.it.short} .${b.it.ip % 256}`],
+          down: a.it.shut || b.it.shut, tags: [...new Set([...tagsFor(a.d, a.it), ...tagsFor(b.d, b.it)])] });
+      }
+      members.forEach((m) => mark(m.d, m.it));
+    }
+
+    // 3. Routes that leave the network (default route = internet)
+    const deviceIps = new Set(devices.flatMap((d) => d.interfaces.map((it) => it.ip).filter((x) => x !== null)));
+    for (const d of devices) {
+      for (const r of d.routes) {
+        if (r.viaIp !== null && deviceIps.has(r.viaIp)) continue;            // next hop is another device we already drew
+        const it = r.viaIp !== null
+          ? d.interfaces.find((x) => x.ip !== null && inSubnet(r.viaIp, netOf(x.ip, x.prefix), x.prefix))
+          : d.interfaces.find((x) => sameIf(x.name, r.via));
+        const isDefault = r.dest === 0 && r.prefix === 0;
+        const id = `t${topo.tops.length}`;
+        topo.tops.push({ id, dev: d.id, kind: isDefault ? "internet" : "network",
+          title: isDefault ? "Internet" : cidr(r.dest, r.prefix),
+          sub: isDefault ? `Default route via ${r.viaIp !== null ? intToIp(r.viaIp) : shortIf(r.via)}` : `Static route via ${r.viaIp !== null ? intToIp(r.viaIp) : shortIf(r.via)}` });
+        topo.links.push({ from: d.id, to: id, kind: "up", down: !!(it && it.shut),
+          label: it ? `${it.short}${it.ip !== null ? " " + intToIp(it.ip) + "/" + it.prefix : ""}` : "",
+          tags: it ? tagsFor(d, it) : [] });
+        if (it) mark(d, it);
+      }
+      if (d.gateway !== null && !deviceIps.has(d.gateway)) {
+        const id = `t${topo.tops.length}`;
+        topo.tops.push({ id, dev: d.id, kind: "network", title: "Default gateway", sub: intToIp(d.gateway) });
+        topo.links.push({ from: d.id, to: id, kind: "up", label: "", tags: [], down: false });
+      }
+      for (const it of d.interfaces) {                 // NAT outside with no route: still the way out
+        if (it.nat === "outside" && !isUsed(d, it) && it.ip !== null) {
+          const id = `t${topo.tops.length}`;
+          topo.tops.push({ id, dev: d.id, kind: "internet", title: "Outside network", sub: cidr(netOf(it.ip, it.prefix), it.prefix) });
+          topo.links.push({ from: d.id, to: id, kind: "up", label: `${it.short} ${intToIp(it.ip)}`, tags: tagsFor(d, it), down: it.shut });
+          mark(d, it);
+        }
+      }
+    }
+
+    // 4. Trunks: to the router-on-a-stick if there is exactly one; between switches,
+    //    the switch with the most trunks is taken as the centre and paired in port order
+    //    (an inference from the configuration, flagged in topo.inferred); anything left is an uplink.
+    const stickRouters = devices.filter((d) => !d.isSwitch && d.interfaces.some((it) => it.dot1q !== null));
+    const trunksOf = (d) => d.interfaces.filter((x) => x.mode === "trunk");
+    const trunkSwitches = devices.filter((d) => d.isSwitch && trunksOf(d).length);
+    if (stickRouters.length !== 1 && trunkSwitches.length >= 2) {
+      const hub = trunkSwitches.reduce((a, b) => (trunksOf(b).length > trunksOf(a).length ? b : a));
+      const hubPorts = trunksOf(hub);
+      trunkSwitches.filter((d) => d !== hub).forEach((d, i) => {
+        const a = hubPorts[i], b = trunksOf(d)[0];
+        if (!a || !b) return;
+        topo.links.push({ from: hub.id, to: d.id, kind: "trunk", label: "802.1Q trunk", ends: [a.short, b.short], tags: [], down: a.shut || b.shut });
+        mark(hub, a); mark(d, b); topo.inferred = true;
+      });
+      if (topo.inferred) {                             // draw the central switch in the middle of the row
+        const hubEntry = topo.devices.find((x) => x.id === hub.id);
+        const rest = topo.devices.filter((x) => x !== hubEntry);
+        const half = Math.ceil(rest.length / 2);
+        topo.devices = [...rest.slice(0, half), hubEntry, ...rest.slice(half)];
+      }
+    }
+    for (const d of devices) {
+      for (const it of d.interfaces.filter((x) => x.mode === "trunk")) {
+        if (isUsed(d, it)) continue;
+        if (stickRouters.length === 1 && d.isSwitch) {
+          if (!topo.links.some((l) => l.kind === "trunk" && l.from === d.id)) {
+            topo.links.push({ from: stickRouters[0].id, to: d.id, kind: "trunk", label: "802.1Q trunk", ends: ["", it.short], tags: [], down: it.shut });
+          }
+        } else {
+          const id = `t${topo.tops.length}`;
+          topo.tops.push({ id, dev: d.id, kind: "trunk", title: `Trunk ${it.short}`, sub: it.allowed ? `VLANs ${it.allowed}` : "All VLANs" });
+          topo.links.push({ from: d.id, to: id, kind: "up", label: "", tags: [], down: it.shut });
+        }
+        mark(d, it);
+      }
+    }
+
+    // 5. LANs under each device: addressed interfaces, then switch access VLANs
+    for (const d of devices) {
+      const byVlan = new Map();
+      for (const it of d.interfaces) {
+        if (it.mode === "access" && it.ip === null) {
+          if (!byVlan.has(it.vlan)) byVlan.set(it.vlan, []);
+          byVlan.get(it.vlan).push(it);
+        }
+      }
+      for (const it of d.interfaces) {
+        if (isUsed(d, it) || it.mode) continue;
+        if (it.ip === null && !it.dhcp) continue;
+        const vlan = it.dot1q ?? (/^vlan(\d+)$/i.test(it.short) ? +/^vlan(\d+)$/i.exec(it.short)[1] : null);
+        const ports = vlan !== null ? byVlan.get(vlan) || [] : [];
+        if (vlan !== null) byVlan.delete(vlan);
+        const tags = tagsFor(d, it);
+        if (ports.length && ports.every((p) => p.portSecurity)) tags.push("Port security");
+        topo.bottoms.push({ id: `b${topo.bottoms.length}`, dev: d.id,
+          title: it.dhcp ? "Address from DHCP" : cidr(netOf(it.ip, it.prefix), it.prefix),
+          sub: `${it.short}${it.ip !== null ? " " + intToIp(it.ip) : ""}`,
+          extra: vlan !== null ? `VLAN ${vlan}${ports.length ? ", ports " + portList(ports) : ""}` : (/^lo/i.test(it.short) ? "Loopback" : it.desc),
+          tags, down: it.shut });
+        mark(d, it);
+      }
+      for (const [vlan, ports] of byVlan) {
+        const tags = ports.every((p) => p.portSecurity) ? ["Port security"] : [];
+        topo.bottoms.push({ id: `b${topo.bottoms.length}`, dev: d.id, title: `VLAN ${vlan}`,
+          sub: `Access ports ${portList(ports)}`, extra: "", tags, down: ports.every((p) => p.shut) });
+      }
+    }
+    for (const b of topo.bottoms) topo.links.push({ from: b.dev, to: b.id, kind: "down", label: "", tags: [], down: b.down });
+
+    // 6. Give each device a role name from what it does in this network
+    const hubId = topo.inferred ? topo.links.filter((l) => l.kind === "trunk").map((l) => l.from)[0] : null;
+    for (const d of devices) {
+      const entry = topo.devices.find((x) => x.id === d.id);
+      const upsToInternet = topo.links.some((l) => l.kind === "up" && l.from === d.id &&
+        topo.tops.find((t) => t.id === l.to && t.kind === "internet"));
+      const peers = topo.links.some((l) => (l.kind === "peer" || l.kind === "trunk") && (l.from === d.id || l.to === d.id));
+      if (!d.isSwitch) {
+        entry.role = upsToInternet || d.interfaces.some((it) => it.nat === "outside") ? "Edge router"
+          : d.interfaces.some((it) => it.dot1q !== null) ? "Inter-VLAN router"
+          : peers ? "Internal router"
+          : topo.bottoms.some((b) => b.dev === d.id) ? "Gateway router" : "Router";
+      } else {
+        entry.role = d.ipRouting ? "Layer 3 switch"
+          : d.id === hubId ? "Central switch"
+          : d.interfaces.some((it) => it.mode === "access") ? "Access switch"
+          : topo.links.some((l) => l.kind === "trunk" && (l.from === d.id || l.to === d.id)) ? "Downstream switch" : "Switch";
+      }
+    }
+    return topo;
+  }
+
+  function portList(ports) {
+    const names = ports.map((p) => p.short);
+    return names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")} +${names.length - 3}`;
+  }
+
+  return { build, _ip: { ipToInt, intToIp, maskToPrefix, wildcardMatch } };
+})();
+if (typeof module !== "undefined") module.exports = Topology;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Topology diagram — draws Topology.build() output as an SVG.
+//   top row:    where traffic leaves (internet, static routes, trunk uplinks)
+//   middle row: routers and switches, with security badges
+//   bottom row: LANs / VLANs behind each device
+// ═══════════════════════════════════════════════════════════════════════════
+const TopologyView = (() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const NW = 196, GAP = 18, PAD = 16;
+  const H_TOP = 62, DEV_HEAD = 52, BADGE_H = 22;
+
+  const s = (tag, attrs = {}, ...kids) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) if (v !== undefined && v !== null) n.setAttribute(k, v);
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  };
+  const fit = (str, max) => (str && str.length > max ? str.slice(0, max - 1) + "\u2026" : str || "");
+  const text = (x, y, str, cls, max = 30, anchor = "middle") => s("text", { x, y, class: cls, "text-anchor": anchor }, fit(str, max));
+
+  function routerIcon(x, y) {
+    return s("g", { class: "t-icon", transform: `translate(${x},${y})` },
+      s("ellipse", { cx: 0, cy: 0, rx: 15, ry: 10 }),
+      s("path", { d: "M-9,-3 L-3,-3 M-5,-5 L-3,-3 L-5,-1 M9,3 L3,3 M5,1 L3,3 L5,5 M-4,5 L-1,1 M4,-5 L1,-1" }));
+  }
+  function switchIcon(x, y) {
+    return s("g", { class: "t-icon", transform: `translate(${x},${y})` },
+      s("rect", { x: -15, y: -9, width: 30, height: 18, rx: 2 }),
+      s("path", { d: "M-10,-3 L9,-3 M6,-6 L9,-3 L6,0 M10,3 L-9,3 M-6,0 L-9,3 L-6,6" }));
+  }
+  function cloud(x, y, w, h) {
+    const l = x, r = x + w, t = y, b = y + h;
+    return s("path", { class: "t-cloud", d:
+      `M${l + 22},${b} C${l},${b} ${l},${t + h * 0.45} ${l + 24},${t + h * 0.42} ` +
+      `C${l + 26},${t + 4} ${l + w * 0.42},${t} ${l + w * 0.5},${t + 10} ` +
+      `C${l + w * 0.6},${t - 2} ${r - 24},${t + 4} ${r - 26},${t + h * 0.4} ` +
+      `C${r},${t + h * 0.42} ${r},${b} ${r - 22},${b} Z` });
+  }
+
+  function draw(topo, riskInfo = new Map()) {
+    const devs = topo.devices;
+    if (!devs.length) return null;
+    const tops = (d) => topo.tops.filter((t) => t.dev === d.id);
+    const bots = (d) => topo.bottoms.filter((b) => b.dev === d.id);
+    const peers = topo.links.filter((l) => l.kind === "peer" || l.kind === "trunk");
+    const idx = new Map(devs.map((d, i) => [d.id, i]));
+    const farPeers = peers.filter((l) => Math.abs(idx.get(l.from) - idx.get(l.to)) > 1);
+    const blockGap = peers.length ? 150 : 44;
+    // Bottom boxes are only as tall as their content needs
+    const botLines = (t) => [t.title, t.sub, t.down ? "Shut down" : t.extra, t.tags.join(", ")].filter(Boolean);
+    const H_BOT = 14 + Math.max(2, ...topo.bottoms.map((t) => botLines(t).length)) * 16;
+
+    // Horizontal layout: one block per device, wide enough for its top/bottom nodes
+    let x = PAD;
+    const blocks = devs.map((d) => {
+      const cols = Math.max(1, tops(d).length, bots(d).length);
+      const w = cols * NW + (cols - 1) * GAP;
+      const b = { d, x, w, cx: x + w / 2 };
+      x += w + blockGap;
+      return b;
+    });
+    const width = x - blockGap + PAD;
+    const maxBadges = Math.max(...devs.map((d) => d.badges.length));
+    const devH = DEV_HEAD + maxBadges * BADGE_H + (maxBadges ? 8 : 0);
+    const hasTop = topo.tops.length > 0, hasBot = topo.bottoms.length > 0;
+    const topY = PAD;
+    const devY = (hasTop ? topY + H_TOP + 74 : PAD + 8) + (farPeers.length ? 26 + farPeers.length * 14 : 0);
+    const botY = devY + devH + 64;
+    const height = (hasBot ? botY + H_BOT : devY + devH) + PAD;
+
+    const svg = s("svg", { xmlns: NS, class: "topo-svg", width, height, style: `width:${width}px`, viewBox: `0 0 ${width} ${height}`, role: "img",
+      "aria-label": `Network diagram: ${devs.length} device(s), ${topo.bottoms.length} LAN segment(s), ${topo.tops.length} outside connection(s).` });
+    const gLinks = s("g"), gNodes = s("g"), gLabels = s("g");
+    svg.append(gLinks, gNodes, gLabels);
+    const pos = new Map();                              // node id -> {x, y, w, h}
+    blocks.forEach((b) => pos.set(b.d.id, { x: b.cx - NW / 2, y: devY, w: NW, h: devH }));
+
+    // Label with a background so it stays readable over lines
+    const label = (cx, cy, lines) => {
+      const g = s("g", { class: "t-label" });
+      const w = Math.max(...lines.map((l) => l[0].length)) * 6.4 + 12, h = lines.length * 14 + 6;
+      g.append(s("rect", { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: 3 }));
+      lines.forEach(([str, cls], i) => g.append(text(cx, cy - h / 2 + 14 + i * 14, str, cls, 40)));
+      gLabels.append(g);
+    };
+
+    // Top row
+    for (const b of blocks) {
+      const list = tops(b.d);
+      const total = list.length * NW + (list.length - 1) * GAP;
+      list.forEach((t, i) => {
+        const nx = b.cx - total / 2 + i * (NW + GAP);
+        pos.set(t.id, { x: nx, y: topY, w: NW, h: H_TOP });
+        const g = s("g", { class: `t-top t-${t.kind}` });
+        if (t.kind === "internet") g.append(cloud(nx - 6, topY - 4, NW + 12, H_TOP + 6));
+        else g.append(s("rect", { class: "t-box", x: nx, y: topY, width: NW, height: H_TOP, rx: 4 }));
+        const subs = t.sub.length > 22 && t.sub.includes(" via ") ? [t.sub.split(" via ")[0], "via " + t.sub.split(" via ")[1]] : [t.sub];
+        g.append(text(nx + NW / 2, topY + (subs.length > 1 ? 21 : 26), t.title, "t-title", 26));
+        subs.forEach((str, i) => g.append(text(nx + NW / 2, topY + (subs.length > 1 ? 37 : 43) + i * 14, str, "t-sub mono", 30)));
+        gNodes.append(g);
+      });
+    }
+    // Bottom row
+    for (const b of blocks) {
+      const list = bots(b.d);
+      const total = list.length * NW + (list.length - 1) * GAP;
+      list.forEach((t, i) => {
+        const nx = b.cx - total / 2 + i * (NW + GAP);
+        pos.set(t.id, { x: nx, y: botY, w: NW, h: H_BOT });
+        const g = s("g", { class: "t-bot" + (t.down ? " t-down-node" : "") });
+        g.append(s("rect", { class: "t-box", x: nx, y: botY, width: NW, height: H_BOT, rx: 4 }));
+        const rows = [[t.title, "t-title mono", 25], [t.sub, "t-sub mono", 28],
+                      [t.down ? "Shut down" : t.extra, "t-sub", 30], [t.tags.join(", "), "t-tag", 30]].filter((r) => r[0]);
+        rows.forEach(([str, cls, max], r) => g.append(text(nx + 10, botY + 20 + r * 16, str, cls, max, "start")));
+        gNodes.append(g);
+      });
+    }
+    // Devices
+    for (const b of blocks) {
+      const p = pos.get(b.d.id), d = b.d;
+      const g = s("g", { class: "t-dev" });
+      g.append(s("rect", { class: "t-devbox", x: p.x, y: p.y, width: NW, height: devH, rx: 6 }));
+      g.append(d.type === "Router" ? routerIcon(p.x + 28, p.y + 26) : switchIcon(p.x + 28, p.y + 26));
+      const roleName = d.role || d.type;
+      const kindLine = d.vlans && d.vlans.length ? `${roleName}, VLANs ${d.vlans.join(", ")}` : roleName;
+      g.append(text(p.x + 54, p.y + 23, d.name, "t-devname", 19, "start"), text(p.x + 54, p.y + 39, kindLine, "t-sub", 23, "start"));
+      d.badges.forEach(([kind, str], i) => {
+        const by = p.y + DEV_HEAD + i * BADGE_H;
+        g.append(s("rect", { class: `t-badge ${kind}`, x: p.x + 10, y: by, width: NW - 20, height: BADGE_H - 4, rx: 3 }),
+                 text(p.x + 18, by + 13, (kind === "good" ? "\u2713 " : "\u2717 ") + str, `t-badgetext ${kind}`, 28, "start"));
+      });
+      // Attack-risk counter in the top-right corner
+      const info = riskInfo.get(d.name.toLowerCase());
+      if (info) {
+        const cx = p.x + NW - 6, cy = p.y + 6;
+        const cls = info.count === 0 ? "none" : info.worst.toLowerCase();
+        const bub = s("g", { class: `t-risk ${cls}` },
+          s("title", {}, info.count === 0 ? "No attack risks found" : `${info.count} attack risk${info.count > 1 ? "s" : ""}, see below`),
+          s("circle", { cx, cy, r: 12 }),
+          s("text", { x: cx, y: cy + 4, "text-anchor": "middle" }, info.count === 0 ? "\u2713" : String(info.count)));
+        g.append(bub);
+      }
+      gNodes.append(g);
+    }
+
+    // Links: device -> top / bottom
+    const spread = (p, n, i) => p.x + p.w / 2 + (n > 1 ? (i - (n - 1) / 2) * Math.min(44, (p.w - 40) / (n - 1)) : 0);
+    for (const b of blocks) {
+      const p = pos.get(b.d.id);
+      const ups = topo.links.filter((l) => l.kind === "up" && l.from === b.d.id);
+      ups.forEach((l, i) => {
+        const t = pos.get(l.to); if (!t) return;
+        const x1 = spread(p, ups.length, i), x2 = t.x + t.w / 2, y1 = p.y, y2 = t.y + t.h;
+        gLinks.append(s("path", { class: "t-link" + (l.down ? " t-down" : ""), d: `M${x1},${y1} C${x1},${y1 - 34} ${x2},${y2 + 34} ${x2},${y2}` }));
+        const lines = [];
+        if (l.label) lines.push([l.label, "t-lab mono"]);
+        if (l.tags.length) lines.push([l.tags.join(", "), "t-tag"]);
+        if (lines.length) label((x1 + x2) / 2, (y1 + y2) / 2, lines);
+      });
+      const downs = topo.links.filter((l) => l.kind === "down" && l.from === b.d.id);
+      downs.forEach((l, i) => {
+        const t = pos.get(l.to); if (!t) return;
+        const x1 = spread(p, downs.length, i), x2 = t.x + t.w / 2, y1 = p.y + p.h, y2 = t.y;
+        gLinks.append(s("path", { class: "t-link" + (l.down ? " t-down" : ""), d: `M${x1},${y1} C${x1},${y1 + 30} ${x2},${y2 - 30} ${x2},${y2}` }));
+      });
+    }
+    // Links: device <-> device
+    let farN = 0;
+    const pairCount = new Map();
+    for (const l of peers) {
+      const a = pos.get(l.from), b = pos.get(l.to);
+      const [L, R] = a.x < b.x ? [a, b] : [b, a];
+      const [endL, endR] = a.x < b.x ? (l.ends || ["", ""]) : [...(l.ends || ["", ""])].reverse();
+      const cls = "t-link t-peer" + (l.kind === "trunk" ? " t-trunk" : "") + (l.down ? " t-down" : "");
+      if (Math.abs(idx.get(l.from) - idx.get(l.to)) === 1) {
+        const key = [l.from, l.to].sort().join("|");
+        const k = pairCount.get(key) || 0; pairCount.set(key, k + 1);
+        const y = L.y + 28 + k * 30;
+        const x1 = L.x + L.w, x2 = R.x;
+        gLinks.append(s("path", { class: cls, d: `M${x1},${y} L${x2},${y}` }));
+        label((x1 + x2) / 2, y - 14, [[l.label, "t-lab mono"], ...(l.tags.length ? [[l.tags.join(", "), "t-tag"]] : [])]);
+        if (endL) gLabels.append(text(x1 + 6, y + 14, endL, "t-end mono", 16, "start"));
+        if (endR) gLabels.append(text(x2 - 6, y + 14, endR, "t-end mono", 16, "end"));
+      } else {
+        const lift = 30 + farN * 14; farN++;
+        const x1 = L.x + L.w / 2 + 30, x2 = R.x + R.w / 2 - 30, y = L.y;
+        gLinks.append(s("path", { class: cls, d: `M${x1},${y} C${x1},${y - lift - 20} ${x2},${y - lift - 20} ${x2},${y}` }));
+        label((x1 + x2) / 2, y - lift - 5, [[`${l.label}  ${endL} / ${endR}`, "t-lab mono"]]);
+      }
+    }
+    return svg;
+  }
+
+  return { draw };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Attack analysis — for each device, which weaknesses in the configuration an
+// attacker could use, explained at an awareness level (what is possible, what
+// they would gain, and the fix). Only flags a setting when the configuration
+// makes it unsafe; safe Cisco defaults are not flagged.
+// ═══════════════════════════════════════════════════════════════════════════
+const Threats = (() => {
+  const I = Engine._internal;
+  const has = (lines, re) => lines.some((l) => re.test(l));
+
+  // Each risk: id, colour (thesis level), title, how, gain, fix, check(ctx) -> detail string | null
+  const RISKS = [
+    { id: "telnet", color: "Red", title: "Passwords stolen over Telnet",
+      how: "Telnet sends everything, including the username and password, as plain text. Anyone who can see traffic between the administrator and this device, such as an infected PC on the same LAN or a shared link, can read the login and reuse it.",
+      gain: "Full remote control of the device with a real administrator's login.",
+      fix: "transport input ssh on the VTY lines, with RSA keys and SSH version 2.",
+      check: (c) => {
+        if (!c.vty.length) return null;
+        const bad = c.vty.filter((b) => { const t = b.subs.find((s) => /^transport\s+input\s/i.test(s)); return !t || /telnet|\ball\b/i.test(t); });
+        if (!bad.length) return null;
+        const explicit = bad.some((b) => b.subs.some((s) => /^transport\s+input\s.*(telnet|\ball\b)/i.test(s)));
+        const one = bad.length === 1;
+        return `${bad.map((b) => b.header).join(", ")} ${explicit ? (one ? "allows" : "allow") + " Telnet"
+          : (one ? "sets" : "set") + " no transport, so Telnet may be allowed by default"}`;
+      } },
+    { id: "console", color: "Red", title: "Anyone at the device can take full control",
+      how: "The console port has no login, and privileged mode has no enable secret. A person with a few minutes of physical access, such as a visitor or cleaner near the rack, can plug in a console cable and reach privileged mode without any password.",
+      gain: "Complete control: change or erase the configuration, create their own accounts, or capture traffic.",
+      fix: "enable secret, a local admin account (username ... secret), and login local on line console 0.",
+      check: (c) => {
+        const conLogin = c.con.some((b) => b.subs.some((s) => /^login(\s+local)?$/i.test(s)));
+        const anyEnable = has(c.g, /^enable\s+(secret|password)\s+\S/i);
+        if (anyEnable || conLogin) return null;
+        return "no enable password or secret, and no login on the console";
+      } },
+    { id: "enablepw", color: "Red", title: "Privileged password easy to recover",
+      how: "The privileged-mode password is set with enable password, which is stored as plain text (or with the weak type 7 encoding, which free online tools reverse in seconds). Anyone who sees the configuration, for example in a backup file, a support ticket or a screenshot, learns it.",
+      gain: "The master password for privileged mode on this device.",
+      fix: "enable secret, which stores a one-way hash instead.",
+      check: (c) => (has(c.g, /^enable\s+password\s+\S/i) && !has(c.g, /^enable\s+secret\s+\S/i)) ? "uses enable password instead of enable secret" : null },
+    { id: "sharedpw", color: "Red", title: "One shared password for remote login",
+      how: "Remote logins use a single line password instead of named accounts. Shared passwords get passed around and are rarely changed, a guessed or leaked password works for everyone, and nobody can tell which person made a change.",
+      gain: "Remote access with a password that many people know, with no record of who used it.",
+      fix: "username ... secret accounts and login local on the VTY lines.",
+      check: (c) => {
+        const bad = c.vty.filter((b) => b.subs.some((s) => /^password\s/i.test(s)) && !b.subs.some((s) => /^login\s+local$/i.test(s)));
+        return bad.length ? `${bad.map((b) => b.header).join(", ")} ${bad.length === 1 ? "uses" : "use"} a shared line password` : null;
+      } },
+    { id: "sshv1", color: "Red", title: "Old SSH version 1 allowed",
+      how: "SSH version 1 has known cryptographic weaknesses that allow a well-placed attacker to interfere with or decrypt sessions.",
+      gain: "Possible interception of administrator sessions.",
+      fix: "ip ssh version 2.",
+      check: (c) => has(c.g, /^ip\s+ssh\s+version\s+1\b/i) ? "ip ssh version 1 is configured" : null },
+    { id: "snmp", color: "Red", title: "Default SNMP community string",
+      how: "The SNMP community is public or private, the first values every scanner tries. With it, anyone who can reach the device can read its details, and with a read-write community, change its configuration.",
+      gain: "A detailed map of the device and network; with read-write access, control of the device.",
+      fix: "A long, unguessable community string limited by an ACL, or better, SNMPv3.",
+      check: (c) => { const l = c.g.find((x) => /^snmp-server\s+community\s+(public|private)\b/i.test(x)); return l ? `snmp-server community ${l.split(/\s+/)[2]}` : null; } },
+    { id: "ospfauth", color: "Red", title: "Fake routes can be injected into OSPF",
+      how: "OSPF runs without authentication, so the device trusts any router that speaks OSPF on its networks. A device plugged into one of those segments can join as a neighbour and advertise false routes.",
+      gain: "Redirect traffic through a machine they control to read it, or send it nowhere to cut the network off.",
+      fix: "OSPF area authentication (message-digest) with keys on each interface, and passive-interface default.",
+      check: (c) => (c.blocks.some((b) => /^router\s+ospf/i.test(b.header)) && !c.all.some((l) => /^area\s+\S+\s+authentication/i.test(l)) &&
+                     !c.all.some((l) => /^ip\s+ospf\s+authentication/i.test(l))) ? "router ospf has no authentication" : null },
+    { id: "eigrpauth", color: "Red", title: "Fake routes can be injected into EIGRP",
+      how: "EIGRP runs without authentication, so the device accepts routing updates from any EIGRP speaker on its networks. A rogue device can become a neighbour and advertise false routes.",
+      gain: "Redirect or black-hole traffic across the network.",
+      fix: "ip authentication mode eigrp ... md5 with a key chain on the interfaces.",
+      check: (c) => (c.blocks.some((b) => /^router\s+eigrp/i.test(b.header)) && !c.all.some((l) => /^ip\s+authentication\s+mode\s+eigrp/i.test(l))) ? "router eigrp has no authentication" : null },
+    { id: "portsec", color: "Red", title: "Rogue devices and MAC flooding on access ports",
+      how: "Access ports accept any device and any number of MAC addresses. Someone can plug an unauthorised laptop or wireless access point into a wall socket, or flood the switch with fake MAC addresses so it starts sending traffic to every port, where it can be captured.",
+      gain: "A foothold inside the LAN and a way to capture other users' traffic.",
+      fix: "switchport port-security (with a maximum and a violation action) on access ports.",
+      check: (c) => c.isSwitch && c.access.length && !c.access.every((b) => b.subs.some((s) => /^switchport\s+port-security$/i.test(s)))
+        ? `${c.access.length} access port group${c.access.length > 1 ? "s" : ""} without port security` : null },
+    { id: "vtyacl", color: "Yellow", title: "Login prompt open to any address",
+      how: "Remote login is not limited to an admin network, so anyone who can reach an interface of this device can try passwords, automatically and without limit.",
+      gain: "A way in by guessing or reusing leaked passwords.",
+      fix: "An access list of admin subnets applied with access-class ... in on the VTY lines.",
+      check: (c) => c.vty.length && c.vty.some((b) => b.subs.some((s) => /^(login|password|transport)/i.test(s))) &&
+                    !c.vty.some((b) => b.subs.some((s) => /^access-class\s+\S+\s+in/i.test(s)))
+        ? (c.internet ? "no access-class on the VTY lines, and this device has a route to the internet" : "no access-class on the VTY lines") : null },
+    { id: "http", color: "Yellow", title: "Web management page switched on",
+      how: "The built-in web server gives another way to log in, and over plain HTTP the password crosses the network unencrypted. Device web interfaces are also a common target for published vulnerabilities.",
+      gain: "Administrator access through the web page, or a way to exploit a known flaw.",
+      fix: "no ip http server and no ip http secure-server.",
+      check: (c) => has(c.g, /^ip\s+http\s+(server|secure-server)/i) ? "ip http server is on" : null },
+    { id: "plainpw", color: "Yellow", title: "Passwords readable in the configuration",
+      how: "Passwords in this configuration are stored as plain text because password encryption is off. Anyone who sees a copy of the configuration can read them directly.",
+      gain: "Working passwords for the device.",
+      fix: "service password-encryption, and enable secret / username ... secret for real accounts.",
+      check: (c) => (!has(c.g, /^service\s+password-encryption/i) &&
+                     (c.all.some((l) => /^password\s+\S/i.test(l)) || has(c.g, /^username\s+\S+.*\bpassword\b/i) || has(c.g, /^enable\s+password\s/i)))
+        ? "password lines with service password-encryption off" : null },
+    { id: "cdp", color: "Yellow", title: "Device advertises its details to neighbours",
+      how: "CDP is on (it is on by default), so the device announces its model, software version and IP addresses to anything connected. An attacker on the LAN can collect this without sending a single login attempt.",
+      gain: "Reconnaissance: exactly which software version to look up known vulnerabilities for.",
+      fix: "no cdp run (or no cdp enable on user-facing interfaces).",
+      check: (c) => (c.interfaces.length && !has(c.g, /^no\s+cdp\s+run/i))
+        ? (c.voice ? { detail: "CDP is on. IP phones on this switch use it to find their voice VLAN, so turn it off only on ports without phones", color: "Green" }
+                   : "CDP is not disabled") : null },
+    { id: "sourceroute", color: "Yellow", title: "Packets can choose their own path",
+      how: "IP source routing is not disabled, so a packet can carry its own route through the network. Attackers use this to steer traffic around filters or to make it look as if it came from a trusted address.",
+      gain: "A way around access controls.",
+      fix: "no ip source-route.",
+      check: (c) => (!c.isSwitch && c.interfaces.length && !has(c.g, /^no\s+ip\s+source-route/i)) ? "ip source-route is not disabled" : null },
+    { id: "dtp", color: "Yellow", title: "VLAN hopping by pretending to be a switch",
+      how: "Some switch ports are left to negotiate their mode. An attacker's laptop can pretend to be a switch and turn the port into a trunk, which gives it access to every VLAN instead of just its own.",
+      gain: "Access to other VLANs, such as management or server networks.",
+      fix: "switchport mode access (or trunk) set explicitly, and switchport nonegotiate.",
+      check: (c) => {
+        if (!c.isSwitch) return null;
+        const bad = c.ifaces.filter((b) => b.subs.some((s) => /^switchport\s+mode\s+dynamic/i.test(s)) ||
+          (!b.subs.some((s) => /^switchport\s+mode\s/i.test(s)) && !b.subs.some((s) => /^ip\s+address\s/i.test(s)) &&
+           !/^interface\s+vlan/i.test(b.header) && !b.subs.some((s) => /^shutdown$/i.test(s))));
+        return bad.length ? `${bad.length} port group${bad.length > 1 ? "s" : ""} with no fixed switchport mode` : null;
+      } },
+    { id: "nativevlan", color: "Yellow", title: "Double-tagging attack through the native VLAN",
+      how: "Trunks use the default native VLAN 1. A device in VLAN 1 can send specially tagged frames that the switch forwards into another VLAN.",
+      gain: "One-way access into a VLAN they should not reach.",
+      fix: "switchport trunk native vlan set to an unused VLAN, and only needed VLANs allowed on the trunk.",
+      check: (c) => { const t = c.trunks.filter((b) => !b.subs.some((s) => /^switchport\s+trunk\s+native\s+vlan/i.test(s)));
+                      return t.length ? `${t.length} trunk${t.length > 1 ? "s" : ""} on native VLAN 1` : null; } },
+    { id: "bpdu", color: "Yellow", title: "A rogue switch can take over spanning tree",
+      how: "Access ports have no BPDU Guard. A small switch plugged into a desk socket can announce itself as the best spanning-tree root, which makes other switches send traffic through it.",
+      gain: "Traffic flowing through their device, or the network disrupted while spanning tree recalculates.",
+      fix: "spanning-tree portfast with spanning-tree bpduguard enable on access ports.",
+      check: (c) => c.isSwitch && c.access.length && !c.access.every((b) => b.subs.some((s) => /^spanning-tree\s+bpduguard\s+enable/i.test(s)))
+                    && !has(c.g, /^spanning-tree\s+portfast\s+bpduguard\s+default/i)
+        ? "access ports without BPDU Guard" : null },
+    { id: "vtp", color: "Yellow", title: "VLAN database can be overwritten",
+      how: "VTP is used without a password. A switch added to the network with a higher revision number can push its VLAN list to every switch, deleting the real VLANs.",
+      gain: "A network-wide outage, or users moved into the wrong VLANs.",
+      fix: "vtp password, or vtp mode transparent / off where VTP is not needed.",
+      check: (c) => (has(c.g, /^vtp\s+mode\s+(server|client)/i) && !has(c.g, /^vtp\s+password/i)) ? "VTP server/client mode with no password" : null },
+    { id: "timeout", color: "Yellow", title: "Sessions never time out",
+      how: "The idle timeout is switched off, so a logged-in session stays open forever. An unattended console or a forgotten remote session can be picked up by someone else.",
+      gain: "An already logged-in administrator session.",
+      fix: "exec-timeout 5 0 (or similar) on the console and VTY lines.",
+      check: (c) => c.all.some((l) => /^(exec-timeout\s+0\s+0|no\s+exec-timeout)/i.test(l)) ? "exec-timeout 0 0 is set" : null },
+    { id: "banner", color: "Green", title: "No legal warning at login",
+      how: "There is no login banner. This does not let anyone in, but without a clear 'authorised access only' notice it is harder to take legal action after an intrusion.",
+      gain: "Weaker legal position for the organisation.",
+      fix: "banner motd with an authorised-access warning.",
+      check: (c) => (c.vty.length || c.con.length) && !has(c.g, /^banner\s+(motd|login)/i) ? "no banner motd" : null },
+    { id: "legacy", color: "Green", title: "Old, unused services switched on",
+      how: "Legacy services such as the TCP/UDP small servers, BOOTP or PAD are enabled. They are not needed on a modern network and only add extra doors, some of which can be abused for small denial-of-service tricks.",
+      gain: "Extra ways to probe or disrupt the device.",
+      fix: "no service tcp-small-servers, no service udp-small-servers, no ip bootp server, no service pad.",
+      check: (c) => { const on = c.g.filter((l) => /^(service\s+(tcp|udp)-small-servers|ip\s+bootp\s+server|service\s+pad)\b/i.test(l));
+                      return on.length ? on.join(", ") : null; } },
+  ];
+
+  function context(section) {
+    const cfg = I.parseConfig(section);
+    const g = cfg.globals.map((l) => l.trim());
+    const ifaces = cfg.blocks.filter((b) => b.kind === "interface");
+    const isSwitch = Engine.isSwitchConfig(section);
+    return {
+      g, blocks: cfg.blocks, all: cfg.allLines().map((l) => l.trim()), isSwitch, ifaces, interfaces: ifaces,
+      vty: cfg.blocks.filter((b) => b.kind === "line" && /^line\s+vty/i.test(b.header)),
+      con: cfg.blocks.filter((b) => b.kind === "line" && /^line\s+con/i.test(b.header)),
+      access: ifaces.filter((b) => b.subs.some((s) => /^switchport\s+mode\s+access/i.test(s)) && !b.subs.some((s) => /^shutdown$/i.test(s))),
+      trunks: ifaces.filter((b) => b.subs.some((s) => /^switchport\s+mode\s+trunk/i.test(s))),
+      voice: cfg.blocks.some((b) => b.subs.some((s) => /^switchport\s+voice\s+vlan/i.test(s))),
+      internet: has(g, /^ip\s+route\s+0\.0\.0\.0\s+0\.0\.0\.0\s/i) || cfg.blocks.some((b) => b.subs.some((s) => /^ip\s+nat\s+outside$/i.test(s))),
+    };
+  }
+
+  function analyze(configText) {
+    const sections = I.splitDevices(configText || "").filter((s) => s.trim());
+    return sections.map((sec, idx) => {
+      const c = context(sec);
+      const name = I.deviceName(sec) || `Device ${idx + 1}`;
+      const risks = [];
+      for (const r of RISKS) {
+        const res = r.check(c);
+        if (!res) continue;
+        const detail = typeof res === "string" ? res : res.detail;
+        risks.push({ id: r.id, color: (typeof res === "object" && res.color) || r.color, title: r.title, how: r.how, gain: r.gain, fix: r.fix, detail });
+      }
+      return { name, risks };
+    });
+  }
+
+  return { analyze, RISKS };
+})();
+if (typeof module !== "undefined") module.exports = Threats;
+
+</script>
+<script>
+(() => {
+  const DEFAULT_ENDPOINT = "https://ushithasamudaya--ushitha-network-corrector-serve.modal.run";
+  const HEALTH_TIMEOUT_MS = 15 * 60 * 1000;
+  const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
+  const STORE = { key: "ncr.apiKey", endpoint: "ncr.endpoint" };
+
+  const EXAMPLES = {
+    office: T.DEFAULT_WRONG_CONFIG,
+    branch: "hostname BranchR1\nenable password cisco123\nip http server\ninterface GigabitEthernet0/0\nip address 10.1.1.1 255.255.255.0\nno shutdown\ninterface GigabitEthernet0/1\nip address 10.2.2.1 255.255.255.0\nno shutdown\nip route 0.0.0.0 0.0.0.0 10.1.1.254\nline vty 0 4\npassword cisco\nlogin\ntransport input telnet",
+    switch: "hostname AccessSW1\nvlan 10\nname Staff\ninterface FastEthernet0/1\nswitchport mode access\nswitchport access vlan 10\nno shutdown\ninterface FastEthernet0/2\nswitchport mode access\nswitchport access vlan 10\nno shutdown\nline vty 0 4\npassword admin\nlogin",
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, props = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n.setAttribute(k, v);
+    }
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  };
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const clock = (ms) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+
+  // ── Settings ───────────────────────────────────────────────────────────
+  $("endpoint").value = store.get(STORE.endpoint) || DEFAULT_ENDPOINT;
+  const savedKey = store.get(STORE.key);
+  if (savedKey) { $("apikey").value = savedKey; $("rememberKey").checked = true; }
+  else $("settings").open = true;
+  $("endpoint").addEventListener("change", () => store.set(STORE.endpoint, $("endpoint").value.trim()));
+  queueMicrotask(() => refreshFacts());
+  const syncKey = () => {
+    if ($("rememberKey").checked && $("apikey").value) store.set(STORE.key, $("apikey").value);
+    else store.del(STORE.key);
+  };
+  $("rememberKey").addEventListener("change", syncKey);
+  $("apikey").addEventListener("change", syncKey);
+  $("showKey").addEventListener("click", () => {
+    const show = $("apikey").type === "password";
+    $("apikey").type = show ? "text" : "password";
+    $("showKey").textContent = show ? "Hide" : "Show";
+    $("showKey").setAttribute("aria-pressed", String(show));
+  });
+  $("example").addEventListener("change", (e) => {
+    if (EXAMPLES[e.target.value]) {
+      $("config").value = EXAMPLES[e.target.value]; updateDetected();
+      topoState.final = null; topoState.input = null; $("topoToggle").classList.add("hidden"); setTopoView("input"); drawThreats();
+    }
+    e.target.value = "";
+  });
+  const updateDetected = () => {
+    const cfg = $("config").value;
+    if (!cfg.trim()) { $("detected").textContent = "Device type and category are detected from the configuration."; return; }
+    $("detected").textContent = `Detected: ${Engine.isSwitchConfig(cfg) ? "switch" : "router"}, ${Engine.detectCategory(cfg)}`;
+  };
+  $("config").addEventListener("input", updateDetected);
+
+  const stages = [...document.querySelectorAll("#pipeline li")];
+  const setStage = (n, state) => {
+    setLive(state === "active" ? n : -1);
+    stages.forEach((li, i) => {
+      li.classList.remove("active", "done", "failed");
+      if (i < n) li.classList.add("done");
+      if (i === n) li.classList.add(state);
+    });
+  };
+  // Live diagram: which parts are working at each stage of a run
+  const LIVE = [
+    ["n-page", "h-health", "n-endpoint", "n-vllm", "n-gpu", "n-volume"],   // 0 start the model
+    ["n-page", "h-request", "n-endpoint", "n-vllm", "n-gpu"],              // 1 generate
+    ["h-answer", "n-validator"],                                            // 2 validate
+    ["n-score"],                                                            // 3 score
+  ];
+  const setLive = (n) => {
+    document.querySelectorAll(".node.live, .hop.live").forEach((x) => x.classList.remove("live"));
+    for (const id of LIVE[n] || []) document.getElementById(id)?.classList.add("live");
+  };
+  const fact = (id, text) => { $(id).textContent = text; };
+  const refreshFacts = () => {
+    try { fact("f-endpoint", new URL($("endpoint").value.trim()).host); } catch { fact("f-endpoint", "Not set"); }
+    const m = document.querySelector("input[name=model]:checked").value;
+    $("f-model").replaceChildren(m === "network-corrector" ? "Fine-tuned (" : "Base model, no fine-tuning (",
+                                 el("code", { text: m }), ")");
+    fact("f-key", $("apikey").value.trim() ? "Entered" : "Not entered");
+  };
+  ["endpoint", "apikey"].forEach((id) => $(id).addEventListener("input", refreshFacts));
+  document.querySelectorAll("input[name=model]").forEach((r) => r.addEventListener("change", refreshFacts));
+  const setConn = (state, text) => { $("connDot").className = "dot " + state; $("connText").textContent = text; };
+  const setStatus = (text, { busy = false, error = false } = {}) => {
+    const s = $("status");
+    s.className = "status" + (error ? " error" : "");
+    s.replaceChildren(...(busy ? [el("span", { class: "spinner", "aria-hidden": "true" })] : []), text);
+  };
+
+  // ── Endpoint calls ─────────────────────────────────────────────────────
+  async function fetchWithTimeout(url, opts, ms) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try { return await fetch(url, { ...opts, signal: ctrl.signal, cache: "no-store" }); }
+    finally { clearTimeout(t); }
+  }
+  async function waitUntilReady(base, started) {
+    const deadline = Date.now() + HEALTH_TIMEOUT_MS;
+    let tick;
+    setConn("busy", "Waking the model");
+    tick = setInterval(() => setStatus(`Waking the model on Modal (${clock(Date.now() - started)}). A cold start can take a few minutes.`, { busy: true }), 1000);
+    try {
+      while (Date.now() < deadline) {
+        try {
+          const r = await fetchWithTimeout(`${base}/health`, {}, 150000);
+          if (r.ok) return;
+        } catch (e) { /* container still starting, or offline — retry */ }
+        await sleep(5000);
+      }
+      throw new Error("The model did not start within 15 minutes. Check the app on the Modal dashboard.");
+    } finally { clearInterval(tick); }
+  }
+  async function generate(base, apiKey, model, messages) {
+    const headers = { "Content-Type": "application/json" };
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const r = await fetchWithTimeout(`${base}/v1/chat/completions`, {
+      method: "POST", headers,
+      body: JSON.stringify({ model, messages, max_tokens: 2500, temperature: 0.0, repetition_penalty: 1.15 }),
+    }, REQUEST_TIMEOUT_MS);
+    if (r.status === 401) throw new Error("The API key was rejected. Enter the API_KEY value from your Modal secret in Connection settings.");
+    if (r.status === 404) throw new Error(`The endpoint doesn't serve a model named "${model}". Check the model choice in Connection settings.`);
+    if (!r.ok) throw new Error(`The endpoint returned an error (HTTP ${r.status}). ${(await r.text()).slice(0, 300)}`);
+    return r.json();
+  }
+
+  // ── Attack analysis ────────────────────────────────────────────────────
+  const LEVEL = { Red: "Very critical", Yellow: "Critical", Green: "Normal" };
+  const pairDevices = (a, b) => {                  // match devices between input and corrected by name, else by position
+    const byName = new Map(b.map((x) => [x.name.toLowerCase(), x]));
+    return a.map((x, i) => byName.get(x.name.toLowerCase()) || (a.length === b.length ? b[i] : null));
+  };
+  function drawThreats() {
+    const sec = $("threats");
+    const inputText = topoState.input ?? $("config").value;
+    if (!inputText.trim()) { sec.classList.add("hidden"); return; }
+    sec.classList.remove("hidden");
+    const before = Threats.analyze(inputText);
+    const after = topoState.final !== null ? Threats.analyze(topoState.final) : null;
+    const roles = new Map();
+    try { for (const d of Topology.build(inputText).devices) roles.set(d.name.toLowerCase(), d.role); } catch {}
+    const label = (name) => { const r = roles.get(name.toLowerCase()); return r ? `${name} (${r.toLowerCase()})` : name; };
+
+    // Merge the same risk across devices
+    const merged = new Map();
+    const pairs = after ? pairDevices(before, after) : [];
+    before.forEach((dev, i) => {
+      for (const r of dev.risks) {
+        if (!merged.has(r.id)) merged.set(r.id, { ...r, where: [], closed: 0, total: 0 });
+        const m = merged.get(r.id);
+        if (r.color === "Red" || (r.color === "Yellow" && m.color === "Green")) m.color = r.color;
+        m.where.push([label(dev.name), r.detail]);
+        m.total++;
+        if (after) { const a = pairs[i]; if (a && !a.risks.some((x) => x.id === r.id)) m.closed++; }
+      }
+    });
+    const introduced = [];
+    if (after) {
+      const inv = pairDevices(after, before);
+      after.forEach((dev, i) => {
+        for (const r of dev.risks) if (!(inv[i] && inv[i].risks.some((x) => x.id === r.id))) introduced.push({ ...r, dev: dev.name });
+      });
+    }
+
+    const items = [...merged.values()];
+    const count = (c) => items.filter((x) => x.color === c).length;
+    const devN = before.length;
+    const summary = $("threatSummary");
+    if (!items.length) {
+      summary.replaceChildren(el("strong", { text: "No attack risks found in this configuration." }));
+    } else {
+      summary.replaceChildren(el("strong", { text: `${items.length} way${items.length > 1 ? "s" : ""} in` }),
+        ` found on ${devN} device${devN > 1 ? "s" : ""}: ${count("Red")} very critical, ${count("Yellow")} critical, ${count("Green")} normal.`);
+      if (after) {
+        const closedAll = items.filter((x) => x.closed === x.total).length;
+        summary.append(" ", el("strong", { text: `The corrected configuration closes ${closedAll} of ${items.length}.` }));
+      }
+    }
+    const list = $("threatList");
+    list.replaceChildren();
+    for (const c of ["Red", "Yellow", "Green"]) {
+      const group = items.filter((x) => x.color === c);
+      if (!group.length) continue;
+      const g = el("div", { class: "risk-group" },
+        el("h3", { class: `txt-${lc(c)}` }, el("i", { style: `background:var(--${lc(c)})` }), `${LEVEL[c]}, ${group.length}`));
+      for (const r of group) {
+        let status = null;
+        if (after) {
+          status = r.closed === r.total ? el("span", { class: "status closed", text: "\u2713 Closed by the corrected configuration" })
+            : r.closed === 0 ? el("span", { class: "status open", text: "\u2717 Still open in the corrected configuration" })
+            : el("span", { class: "status partial", text: `Closed on ${r.closed} of ${r.total} devices` });
+        }
+        const where = r.where.slice(0, 3).map(([dev, detail]) => el("span", { class: "risk-where" }, el("b", { text: dev + ": " }), detail));
+        if (r.where.length > 3) where.push(el("span", { class: "risk-where", text: `and ${r.where.length - 3} more device(s)` }));
+        g.append(el("details", { class: `risk ${lc(c)}` },
+          el("summary", {}, el("span", { class: "risk-title" }, el("strong", { text: r.title }), status), ...where),
+          el("div", { class: "risk-body" },
+            el("p", {}, el("span", { class: "lbl", text: "How it could be attacked: " }), r.how),
+            el("p", {}, el("span", { class: "lbl", text: "What the attacker gains: " }), r.gain),
+            el("p", {}, el("span", { class: "lbl", text: "Fix: " }), r.fix))));
+      }
+      list.append(g);
+    }
+    if (introduced.length) {
+      const g = el("div", { class: "risk-group" }, el("h3", { text: `Still present in the corrected configuration, ${introduced.length}` }));
+      for (const r of introduced) {
+        g.append(el("details", { class: `risk ${lc(r.color)}` },
+          el("summary", {}, el("span", { class: "risk-title" }, el("strong", { text: r.title }),
+                                  el("span", { class: "status open", text: `${LEVEL[r.color]}` })),
+             el("span", { class: "risk-where" }, el("b", { text: label(r.dev) + ": " }), r.detail)),
+          el("div", { class: "risk-body" },
+            el("p", {}, el("span", { class: "lbl", text: "How it could be attacked: " }), r.how),
+            el("p", {}, el("span", { class: "lbl", text: "Fix: " }), r.fix))));
+      }
+      list.append(g);
+    }
+  }
+  const riskInfoFor = (text) => {
+    const m = new Map();
+    for (const d of Threats.analyze(text)) {
+      const worst = d.risks.some((r) => r.color === "Red") ? "Red" : d.risks.some((r) => r.color === "Yellow") ? "Yellow" : "Green";
+      m.set(d.name.toLowerCase(), { count: d.risks.length, worst });
+    }
+    return m;
+  };
+
+  // ── Network diagram ────────────────────────────────────────────────────
+  const topoState = { view: "input", final: null, input: null };
+  function drawTopo() {
+    const useFinal = topoState.view === "final" && topoState.final !== null;
+    const cfgText = useFinal ? topoState.final : (topoState.input ?? $("config").value);
+    const sec = $("topo");
+    if (!cfgText.trim()) { sec.classList.add("hidden"); return; }
+    sec.classList.remove("hidden");
+    let topo, svg;
+    try { topo = Topology.build(cfgText); svg = TopologyView.draw(topo, riskInfoFor(cfgText)); }
+    catch (e) { console.error(e); topo = null; svg = null; }
+    $("topoWrap").replaceChildren(...(svg ? [svg] : []));
+    const note = $("topoNote");
+    const noLinks = topo && topo.devices.length && !topo.tops.length && !topo.bottoms.length && !topo.links.length;
+    note.textContent = !svg ? "This configuration has no devices to draw yet. Start it with a hostname line."
+      : noLinks ? "This configuration has no interfaces or routes, so only the device and its security settings are shown."
+      : topo.inferred ? "Trunk links between switches are inferred from the configuration: the switch with the most trunk ports is " +
+                        "drawn in the centre and its ports are paired with the other switches in order. Check them against your real cabling." : "";
+    note.classList.toggle("hidden", !note.textContent);
+    if (topo && topo.devices.length) {
+      const n = topo.devices.length;
+      $("topoCaption").textContent = `${useFinal ? "Drawn from the corrected configuration" : "Drawn from your input configuration"}: ` +
+        `${n} device${n > 1 ? "s" : ""}, ${topo.bottoms.length} LAN segment${topo.bottoms.length === 1 ? "" : "s"}` +
+        (topo.tops.length ? `, ${topo.tops.length} connection${topo.tops.length === 1 ? "" : "s"} out of the network.` : ".");
+    }
+  }
+  const setTopoView = (v) => {
+    topoState.view = v;
+    document.querySelectorAll("#topoToggle button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+    drawTopo();
+  };
+  document.querySelectorAll("#topoToggle button").forEach((b) => b.addEventListener("click", () => setTopoView(b.dataset.view)));
+  let topoTimer;
+  $("config").addEventListener("input", () => {
+    clearTimeout(topoTimer);
+    topoTimer = setTimeout(() => {
+      if (topoState.final === null) { topoState.input = null; drawTopo(); drawThreats(); }
+      else if (topoState.view === "input") drawTopo();
+    }, 250);
+  });
+  $("archLink").addEventListener("click", () => { $("architecture").open = true; });
+
+  // ── Run ────────────────────────────────────────────────────────────────
+  $("runBtn").addEventListener("click", run);
+  async function run() {
+    const input = $("config").value.replace(/^\s*end\s*$/gim, "").trim();
+    const base = $("endpoint").value.trim().replace(/\/+$/, "");
+    const apiKey = $("apikey").value.trim();
+    const model = document.querySelector("input[name=model]:checked").value;
+    if (!input) { setStatus("Paste a configuration first, or load an example.", { error: true }); $("config").focus(); return; }
+    if (!/^https?:\/\//.test(base)) { setStatus("Enter the Modal endpoint URL in Connection settings.", { error: true }); $("settings").open = true; return; }
+    const category = $("category").value || Engine.detectCategory(input);
+    $("runBtn").disabled = true;
+    const started = Date.now();
+    let stage = 0;
+    setStage(0, "active");
+    try {
+      await waitUntilReady(base, started);
+      const readyMs = Date.now() - started;
+      fact("f-ready", readyMs < 5000 ? `Model was already running (${clock(readyMs)})` : `Cold start, ${clock(readyMs)}`);
+      stage = 1; setStage(1, "active");
+      setConn("ready", "Model ready");
+      const genStart = Date.now();
+      const tick = setInterval(() => setStatus(`Generating the hardened configuration (${clock(Date.now() - genStart)})`, { busy: true }), 1000);
+      setStatus("Generating the hardened configuration (0:00)", { busy: true });
+      let data;
+      try { data = await generate(base, apiKey, model, Engine.buildMessages(input, category)); }
+      finally { clearInterval(tick); }
+      const choice = data.choices?.[0] || {};
+      const raw = (choice.message?.content || "").trim();
+      const toks = data.usage?.completion_tokens;
+      fact("f-gen", `${clock(Date.now() - genStart)}, ${toks ?? "unknown"} output tokens, ` +
+                    (choice.finish_reason === "length" ? "cut off at the 2,500-token limit" : "finished normally"));
+      stage = 2; setStage(2, "active");
+      const ok = render(input, raw, { model, category, finish: choice.finish_reason, usage: data.usage || {}, elapsed: Date.now() - started });
+      if (ok === false) setStage(2, "failed");
+      else { setStage(3, "active"); await sleep(400); setStage(4, "done"); }
+      setStatus(`Finished in ${clock(Date.now() - started)}.`);
+    } catch (e) {
+      const msg = e.name === "AbortError" ? "The request timed out. Try again; the model may still be starting."
+        : e instanceof TypeError ? "Couldn't reach the endpoint. Check your internet connection and the endpoint URL."
+        : e.message;
+      setStatus(msg, { error: true });
+      setStage(stage, "failed");
+      setConn("fail", "Connection problem");
+    } finally {
+      $("runBtn").disabled = false;
+    }
+  }
+
+  // ── Rendering ──────────────────────────────────────────────────────────
+  const COLORS = ["Red", "Yellow", "Green"];
+  const lc = (c) => c.toLowerCase();
+
+  function render(input, raw, info) {
+    const out = $("results");
+    const topoSec = $("topo"), threatSec = $("threats");
+    out.replaceChildren();
+    const parsed = Engine.parseMarkdownResponse(raw);
+    const rawBlock = el("details", { class: "raw" }, el("summary", { text: "Show the model's raw answer" }),
+                        el("pre", { class: "config", text: raw || "(empty answer)" }));
+    const metaText = `Model: ${info.model === "network-corrector" ? "fine-tuned" : "base Qwen2.5-7B (no fine-tuning)"}. ` +
+      `Category: ${info.category}. Output tokens: ${info.usage.completion_tokens ?? "unknown"}.`;
+
+    if (!parsed.corrected_code && !parsed.corrections.length) {
+      out.append(el("section", { class: "panel" },
+        el("h2", { text: "The answer wasn't in the expected format" }),
+        el("p", { text: "The validator needs the model's corrected configuration section to work. This is common with the base model, " +
+                        "which was never trained on this answer format. The raw answer is shown below." }),
+        el("p", { class: "meta", text: metaText }), rawBlock));
+      out.append(topoSec, threatSec);
+      topoState.final = null; topoState.input = null; $("topoToggle").classList.add("hidden"); setTopoView("input"); drawThreats();
+      rawBlock.open = true;
+      return false;
+    }
+
+    const corrections = Engine.dedupCorrections(parsed.corrections);
+    const [finalConfig, notes] = Engine.postprocess(input, parsed.corrected_code, corrections);
+    const s = Engine.scoreConfigs(input, finalConfig);
+
+    out.append(renderScore(s, parsed.score));
+    out.append(topoSec, threatSec);
+    topoState.final = finalConfig;
+    topoState.input = input;
+    $("topoToggle").classList.remove("hidden");
+    setTopoView("final");
+    drawThreats();
+    out.append(renderConfig(finalConfig, info, metaText, Engine.annotateConfig(input, finalConfig, s, notes)));
+    out.append(renderReport(notes));
+    out.append(renderFixes(s, corrections, finalConfig));
+    out.append(el("section", {}, rawBlock));
+  }
+
+  function renderScore(s, modelScore) {
+    const sec = el("section", { class: "panel" });
+    sec.append(el("h2", { text: "Security score" }));
+    const big = el("div", { class: "score-big" },
+      el("span", { class: "from", text: `${s.before}%` }), el("span", { class: "arrow", text: " to " }), `${s.after}%`);
+    sec.append(el("div", { class: "score-numbers" }, big, el("span", { class: "score-delta", text: `+${s.improvement} percentage points` })));
+
+    const bar = el("div", { class: "bar", role: "img",
+      "aria-label": `Score before ${s.before}%, after ${s.after}%. Red fixes add ${s.pct.Red}, yellow ${s.pct.Yellow}, green ${s.pct.Green}.` });
+    const seg = (cls, w, title) => w > 0 ? el("span", { class: cls, style: `width:${w}%`, title }) : null;
+    bar.append(...[
+      seg("seg-already", s.before, `Already secure before: ${s.before}%`),
+      seg("seg-red", s.pct.Red, `Very critical fixes: +${s.pct.Red}%`),
+      seg("seg-yellow", s.pct.Yellow, `Critical fixes: +${s.pct.Yellow}%`),
+      seg("seg-green", s.pct.Green, `Normal fixes: +${s.pct.Green}%`),
+      seg("seg-allow", 100 - s.after, "Extended hardening allowance (out of scope)")].filter(Boolean));
+    sec.append(bar);
+    const leg = el("div", { class: "legend" });
+    const item = (color, text) => el("span", {}, el("i", { style: `background:${color}` }), text);
+    if (s.before > 0) leg.append(item("var(--already)", "Already secure in the input"));
+    leg.append(item("var(--red)", "Very critical"), item("var(--yellow)", "Critical"), item("var(--green)", "Normal"),
+               el("span", {}, el("i", { class: "seg-allow", style: "border:1px solid var(--rule);width:18px" }),
+                  "Reserved for enterprise controls outside this study (AAA, NTP authentication, SNMPv3)"));
+    sec.append(leg);
+
+    const tbl = el("table", { class: "fixes" });
+    tbl.append(el("thead", {}, el("tr", {}, ...["Level", "Fixes", "Weight", "Points", "Adds to score"].map((h) => el("th", { scope: "col", text: h })))));
+    const tb = el("tbody");
+    let nFix = 0, nPts = 0, nPct = 0;
+    for (const c of COLORS) {
+      const n = s.fixes[c].length, pts = s.points[c];
+      nFix += n; nPts += pts; nPct += s.pct[c];
+      tb.append(el("tr", {},
+        el("td", {}, el("span", { class: "lvl" }, el("i", { style: `background:var(--${lc(c)})` }), Engine.FIX_LABELS[c])),
+        el("td", { text: String(n) }), el("td", { text: `x ${Engine.WEIGHTS[c]}` }),
+        el("td", { text: String(pts) }), el("td", { text: `+${s.pct[c]}%` })));
+    }
+    tb.append(el("tr", { class: "total" }, el("td", { text: "Overall" }), el("td", { text: String(nFix) }), el("td", { text: "" }),
+                 el("td", { text: String(nPts) }), el("td", { text: `+${nPct}%` })));
+    tbl.append(tb);
+    sec.append(el("div", { style: "overflow-x:auto" }, tbl));
+    let formula = `Score = rule points / (all rule points + ${Engine.EXTENDED_ALLOWANCE}). Here the configuration holds ${s.denom - Engine.EXTENDED_ALLOWANCE} points out of ${s.denom}.`;
+    if (s.already.length) formula += ` ${s.already.length} rule(s) were already present in the input.`;
+    if (modelScore) formula += ` The model's own estimate (${modelScore.before}% to ${modelScore.after}%) is not used.`;
+    sec.append(el("p", { class: "formula", text: formula }));
+    return sec;
+  }
+
+  function renderConfig(finalConfig, info, metaText, annotated) {
+    const sec = el("section", { class: "panel" });
+    const copyBtn = el("button", { class: "small", type: "button", text: "Copy" });
+    const dlBtn = el("button", { class: "small", type: "button", text: "Download .txt" });
+    sec.append(el("div", { class: "section-head" }, el("h2", { text: "Corrected configuration" }), el("div", { class: "row" }, copyBtn, dlBtn)));
+    const LEGEND = [["red", "Very critical fix"], ["yellow", "Critical fix"], ["green", "Normal fix"],
+                    ["added", "Other line added by the model"], ["restored", "Restored by the validator"],
+                    ["plain", "Unchanged from your input"]];
+    const used = new Set(annotated.map((a) => a.kind));
+    sec.append(el("div", { class: "line-legend" },
+      ...LEGEND.filter(([k]) => used.has(k) || k === "plain").map(([k, label]) => el("span", {}, el("i", { class: `k-${k}` }), label))));
+    const PREFIX = { red: "Very critical fix: ", yellow: "Critical fix: ", green: "Normal fix: " };
+    const lines = el("span", { class: "lines" });
+    for (const a of annotated) {
+      const props = { class: `ln k-${a.kind}` };
+      if (a.rule) props.title = (PREFIX[a.kind] || "") + a.rule;
+      lines.append(el("span", props, a.text || "\u200b"));
+    }
+    const pre = el("pre", { class: "config annotated", tabindex: "0", "aria-label": "Corrected configuration, highlighted by fix level" }, lines);
+    sec.append(pre);
+    const meta = el("p", { class: "meta", text: metaText });
+    if (info.finish === "length") meta.append(el("span", { class: "warn", text: " The model hit its 2,500-token limit, so its answer may be incomplete." }));
+    sec.append(meta);
+    copyBtn.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(finalConfig); }
+      catch {
+        const r = document.createRange(); r.selectNodeContents(pre);
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand("copy"); sel.removeAllRanges();
+      }
+      copyBtn.textContent = "Copied"; setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
+    });
+    dlBtn.addEventListener("click", () => {
+      const host = (/^hostname\s+(\S+)/im.exec(finalConfig) || [, "config"])[1];
+      const a = el("a", { href: URL.createObjectURL(new Blob([finalConfig + "\n"], { type: "text/plain" })), download: `${host}-hardened.txt` });
+      document.body.append(a); a.click(); a.remove();
+    });
+    return sec;
+  }
+
+  function renderReport(notes) {
+    const sec = el("section", { class: "panel report" });
+    sec.append(el("h2", { text: "What the validator changed" }));
+    const groups = [
+      ["input_issues", "Problems in your input (not copied into the output)"],
+      ["removed", "Removed from the model's answer"],
+      ["restored", "Restored from your original configuration"],
+      ["relocated", "Moved to the correct configuration block"],
+      ["not_applied", "Suggested by the model but not applied"],
+    ];
+    let any = false;
+    for (const [key, title] of groups) {
+      const items = notes[key] || [];
+      if (!items.length) continue;
+      any = true;
+      sec.append(el("h3", { text: title }));
+      const ul = el("ul");
+      for (const [line, reason] of items)
+        ul.append(el("li", {}, el("code", { text: line.split("\n")[0] }), el("span", { class: "why", text: reason })));
+      sec.append(ul);
+    }
+    for (const w of notes.warnings || []) { any = true; sec.append(el("p", { class: "warn", text: `Warning: ${w}` })); }
+    if (!any) sec.append(el("p", { text: "Nothing needed changing. The model's answer passed every check." }));
+    return sec;
+  }
+
+  function renderFixes(s, corrections, finalConfig) {
+    const sec = el("section", { class: "panel" });
+    sec.append(el("h2", { text: "Security fixes" }));
+    let any = false;
+    for (const c of COLORS) {
+      const fx = Engine.explainFixes(s.fixes[c], corrections, finalConfig);
+      if (!fx.length) continue;
+      any = true;
+      const g = el("div", { class: "fix-group" });
+      g.append(el("h3", { class: `txt-${lc(c)}` }, el("i", { style: `background:var(--${lc(c)})` }),
+                  `${Engine.FIX_LABELS[c]}, ${fx.length}`));
+      for (const f of fx)
+        g.append(el("div", { class: `fix ${lc(c)}` }, el("strong", { text: f.rule }), f.line ? el("code", { text: `+ ${f.line}` }) : null,
+                    el("p", { text: f.why })));
+      sec.append(g);
+    }
+    if (!any) sec.append(el("p", { text: "No scored security fixes were needed." }));
+    return sec;
+  }
+})();
+</script>
+</body>
+</html>
