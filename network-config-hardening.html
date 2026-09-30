@@ -386,13 +386,6 @@
         <p class="hint" id="detected">Device type and category are detected from the configuration.</p>
         <div class="row" style="margin-top:14px">
           <button class="primary" id="runBtn">Harden configuration</button>
-          <label class="sr-only" for="example">Load an example</label>
-          <select id="example" style="width:auto;flex:1;min-width:180px">
-            <option value="">Load an example…</option>
-            <option value="office">Office router (from the training data)</option>
-            <option value="branch">Branch router with Telnet (not in training data)</option>
-            <option value="switch">Access switch (not in training data)</option>
-          </select>
         </div>
         <p class="status" id="status" role="status" aria-live="polite"></p>
       </div>
@@ -415,7 +408,6 @@
         <div class="grp">
           <span class="field" style="display:block;font-weight:500;margin-bottom:6px">Model</span>
           <label class="radio"><input type="radio" name="model" value="network-corrector" checked> <span>Fine-tuned model (your LoRA adapter)</span></label>
-          <label class="radio"><input type="radio" name="model" value="Qwen/Qwen2.5-7B-Instruct"> <span>Base Qwen2.5-7B, without fine-tuning, for comparison</span></label>
         </div>
         <div class="grp" style="margin-bottom:0">
           <label class="field" for="category">Category</label>
@@ -469,7 +461,7 @@
       </section>
       <div class="empty" id="empty">
         <h2>Results will appear here</h2>
-        <p>Paste a configuration or load an example, then select Harden configuration. The first request
+        <p>Paste a configuration, then select Harden configuration. The first request
            after the endpoint has been idle for 15 minutes wakes the model on Modal, which can take a few minutes.</p>
         <div class="preview" aria-hidden="true">
           <span class="ln k-plain">hostname BranchR1</span>
@@ -1928,12 +1920,6 @@ if (typeof module !== "undefined") module.exports = Threats;
   const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
   const STORE = { key: "ncr.apiKey", endpoint: "ncr.endpoint" };
 
-  const EXAMPLES = {
-    office: T.DEFAULT_WRONG_CONFIG,
-    branch: "hostname BranchR1\nenable password cisco123\nip http server\ninterface GigabitEthernet0/0\nip address 10.1.1.1 255.255.255.0\nno shutdown\ninterface GigabitEthernet0/1\nip address 10.2.2.1 255.255.255.0\nno shutdown\nip route 0.0.0.0 0.0.0.0 10.1.1.254\nline vty 0 4\npassword cisco\nlogin\ntransport input telnet",
-    switch: "hostname AccessSW1\nvlan 10\nname Staff\ninterface FastEthernet0/1\nswitchport mode access\nswitchport access vlan 10\nno shutdown\ninterface FastEthernet0/2\nswitchport mode access\nswitchport access vlan 10\nno shutdown\nline vty 0 4\npassword admin\nlogin",
-  };
-
   const $ = (id) => document.getElementById(id);
   const el = (tag, props = {}, ...kids) => {
     const n = document.createElement(tag);
@@ -1969,13 +1955,6 @@ if (typeof module !== "undefined") module.exports = Threats;
     $("apikey").type = show ? "text" : "password";
     $("showKey").textContent = show ? "Hide" : "Show";
     $("showKey").setAttribute("aria-pressed", String(show));
-  });
-  $("example").addEventListener("change", (e) => {
-    if (EXAMPLES[e.target.value]) {
-      $("config").value = EXAMPLES[e.target.value]; updateDetected();
-      topoState.final = null; topoState.input = null; $("topoToggle").classList.add("hidden"); setTopoView("input"); drawThreats();
-    }
-    e.target.value = "";
   });
   const updateDetected = () => {
     const cfg = $("config").value;
@@ -2206,7 +2185,7 @@ if (typeof module !== "undefined") module.exports = Threats;
     const base = $("endpoint").value.trim().replace(/\/+$/, "");
     const apiKey = $("apikey").value.trim();
     const model = document.querySelector("input[name=model]:checked").value;
-    if (!input) { setStatus("Paste a configuration first, or load an example.", { error: true }); $("config").focus(); return; }
+    if (!input) { setStatus("Paste a configuration first.", { error: true }); $("config").focus(); return; }
     if (!/^https?:\/\//.test(base)) { setStatus("Enter the Modal endpoint URL in Connection settings.", { error: true }); $("settings").open = true; return; }
     const category = $("category").value || Engine.detectCategory(input);
     $("runBtn").disabled = true;
